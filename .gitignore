@@ -1,0 +1,9 @@
+tests/testdata/
+node_modules/
+out/
+package-lock.json
+coverage/
+treestatistics.csv
+data/
+.nyc_output/
+runtest

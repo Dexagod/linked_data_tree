@@ -1,0 +1,418 @@
+import { Tree } from './Tree';
+import { Member } from '../DataObjects/Member';
+import { Node } from '../Node/Node';
+import { ChildRelation } from '../Relations/ChildRelation';
+
+import * as terraformer from 'terraformer'
+import { Identifier } from '../Identifier';
+
+export class RTree extends Tree{
+
+  maxChildrenSize = 10;
+
+  addData(representation: any, member: Member): Node | null {
+    if(this.node_count === 0) {
+      return this.createFirstNode(representation, member)
+    }
+    return this.recursiveAddition(this.get_root_node(), member)
+  }  
+
+  private recursiveAddition(currentNode : Node, member : Member) : Node {
+
+    if (currentNode.has_child_relations()){
+      let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation);
+      if (childrenIdentifiers !== null) { // Node has childRelations of type GeospaciallyContainsRelation
+        let containingChild = this.findContainingChild(childrenIdentifiers, member.get_representation())
+        // Geen child node die de nieuwe data containt
+        if (containingChild !== null) {
+          return this.recursiveAddition(containingChild, member);
+        }
+        let foundNode = this.findClosestBoundingBoxIndex(currentNode, member.get_representation());
+        if (foundNode.get_node_id() === currentNode.get_node_id()){
+          return this.addMemberToNode(currentNode, member)
+        } else {
+          return this.recursiveAddition(foundNode, member)
+        }
+      } 
+    } 
+    // Node is a leaf node (does not have any children of type GeospaciallyContainsRelation)
+    return this.addMemberToNode(currentNode, member)
+  }
+
+  addMemberToNode(currentNode : Node, member : Member){
+    if (! this.isContained(member.get_representation(), currentNode.get_value())){
+      let currentNodeBBox = currentNode.get_value().bbox()
+      let dataBBox = member.get_representation().bbox()
+      if (currentNodeBBox === undefined || dataBBox === undefined) {throw new Error("bbox was undefined")}
+      currentNode.set_value( this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox)))
+    }
+    currentNode.add_data(member);
+    
+    if (currentNode.get_members().length <= this.max_fragment_size) {
+      return currentNode;
+    } else {
+      return this.splitNode(currentNode, member)
+    }
+  }
+  
+  searchData(value : any): Member[] {
+    return this._search_data_recursive(this.get_root_node(), value)
+  }
+
+  private _search_data_recursive(currentNode : Node, area: terraformer.Polygon | terraformer.Point) : Array<Member>{
+    let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
+    if (childrenIdentifiers !== null) {
+      let containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area)
+
+      if (containingChildren.length === 0){
+        return [];
+      } else {
+        let childrenResults :  Array<Member> = new Array();
+        containingChildren.forEach(child => {
+          childrenResults.concat(this._search_data_recursive(child, area))
+        });
+        return childrenResults;
+        
+      }
+    } else { // leaf node
+      let members : Array<Member> = new Array();
+      currentNode.members.forEach(tdo => {
+        if (this.isContained(tdo.get_representation(), area)){
+          members.push(tdo)
+        }
+      })
+      return members
+    }
+  }
+
+  private findClosestBoundingBoxIndex(currentNode : Node, dataWKTstring : any) : Node {
+
+    let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation);
+    if (childrenIdentifiers === null ){ throw new Error("impossible") }
+    let boundingBoxList = childrenIdentifiers.map(identifier => identifier.value);
+
+    let smallestBoundingBoxIndex = 0;
+    let smallestBoundingBox = null;
+    let smallestSizeDifference = Infinity;
+    
+    let dataBoundingBox = dataWKTstring.bbox()
+    if (dataBoundingBox === undefined) {throw new Error("undefined bounding box for the given data")}
+
+    for (let i = 0; i < boundingBoxList.length; i++){
+      let childParsed = boundingBoxList[i]
+      let childBoundingBox = childParsed.bbox()
+      if (childBoundingBox === undefined) {throw new Error("undefined bounding box for the given child node value")}
+      let expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, childBoundingBox)
+      let expandedBboxSize = this.getBBoxSize(expandedBoundingBox)
+      let sizeDifference = expandedBboxSize - this.getBBoxSize(childBoundingBox)
+
+      if (sizeDifference < smallestSizeDifference){
+        smallestBoundingBox = expandedBoundingBox
+        smallestSizeDifference = sizeDifference
+        smallestBoundingBoxIndex = i;
+      }
+    }
+
+    let currentNodeBBox = currentNode.get_value().bbox();
+    let expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, currentNodeBBox)
+    let expandedBboxSize = this.getBBoxSize(expandedBoundingBox)
+    let currentNodeAdditionSizeDifference = expandedBboxSize - this.getBBoxSize(currentNodeBBox)
+
+    if (smallestBoundingBox === null || currentNodeAdditionSizeDifference < smallestSizeDifference){
+      return currentNode
+    } else {
+      let oldIdentifier = childrenIdentifiers[smallestBoundingBoxIndex]
+      let newValue = this.bboxToGeoJSON(smallestBoundingBox) 
+      let newIdentifier = new Identifier(oldIdentifier.nodeId, newValue)
+      currentNode.update_child(oldIdentifier, newIdentifier)
+      let node = this.get_cache().get_node(oldIdentifier);
+      node.set_value(newValue)
+      return node;
+    }
+    //todo : update child value, update child value in the parent identifier for the child
+  }
+
+
+  private splitNode(node : Node, addedMember : Member | null) : Node {
+    
+    let childrenIdentifiers = node.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
+      
+    let parent = null;
+    let splitNode1 = null;
+    let splitNode2 = null;
+
+    if (childrenIdentifiers === null || childrenIdentifiers.length === 0) { 
+      // We are splitting a leaf node, and have to devide the Members
+
+
+      let entryBboxes = node.get_members().map(e => e.get_representation().bbox())
+      let splitAxis = this.chooseAxis(entryBboxes) // 0 == split on X axis, 1 == split on Y axis
+      if (splitAxis !== 0 && splitAxis !== 1) { throw new Error("invalid axis passed to the distribute function") }
+
+      let items = node.get_members()
+
+      if (splitAxis === 0) {
+        items.sort((a, b) => (this.getBBox(a.get_representation())[0] > this.getBBox(b.get_representation())[0]) ? 1 : -1)
+      } else {
+        items.sort((a, b) => (this.getBBox(a.get_representation())[1] > this.getBBox(b.get_representation())[1]) ? 1 : -1)
+      }
+      let node2items = items.splice(Math.floor(items.length / 2), items.length);
+
+      if (node.has_parent_node()){
+        parent = node.get_parent_node()
+        splitNode1 = new Node(this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation()))), parent, this)
+        splitNode2 = new Node(this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation()))), parent, this)
+
+        splitNode1.set_members(items)
+        splitNode2.set_members(node2items)
+        parent.swapChildren(node, [splitNode1, splitNode2], ChildRelation.GeospatiallyContainsRelation)
+
+        this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
+
+      } else {
+        // node is the root node of the tree (and since no children also the only node in the tree)
+        splitNode1 = new Node(this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation()))), node, this)
+        splitNode2 = new Node(this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation()))), node, this)
+        
+        splitNode1.set_members(items)
+        splitNode2.set_members(node2items)
+        node.deleteMembers()
+
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2)
+        this.set_root_node_identifier(node.get_identifier())
+
+        parent = node;
+      }
+    } else {
+      // We are splitting an internal node, and have to devide the children
+
+      let entryBboxes = childrenIdentifiers.map(e => e.value.bbox())
+      let membersEntryBboxes = node.get_members().map(e => e.get_representation().bbox())
+      let totalEntryBBoxes = entryBboxes.concat(membersEntryBboxes)
+      let splitAxis = this.chooseAxis(totalEntryBBoxes) // 0 == split on X axis, 1 == split on Y axis
+
+      let node1members = new Array()
+      let node2members =  new Array()
+      let node1childrenIdentifiers = new Array()
+      let node2childrenIdentifiers = new Array()
+      if (splitAxis !== 0 && splitAxis !== 1) { throw new Error("invalid axis passed to the distribute function") }
+
+      
+      let items = totalEntryBBoxes
+      items = items.sort((a, b) => (a[splitAxis] > b[splitAxis]) ? 1 : -1)
+
+      let splitValue = items[Math.floor(items.length / 2)][splitAxis];
+
+      let node1bboxes = []
+      let node2bboxes = []
+      for (let member of node.get_members()){
+        if (member.get_representation().bbox()[splitAxis] <= splitValue){
+          node1members.push(member)
+          node1bboxes.push(member.get_representation().bbox())
+        } else {
+          node2members.push(member)
+          node2bboxes.push(member.get_representation().bbox())
+        }
+      }
+
+      for (let childIdentifier of childrenIdentifiers){
+        if (childIdentifier.value.bbox()[splitAxis] <= splitValue){
+          node1childrenIdentifiers.push(childIdentifier)
+          node1bboxes.push(childIdentifier.value.bbox())
+        } else {
+          node2childrenIdentifiers.push(childIdentifier)
+          node2bboxes.push(childIdentifier.value.bbox())
+        }
+      }
+      let node1value = this.createBoundingBox(node1bboxes)
+      let node2value = this.createBoundingBox(node2bboxes)
+
+      if (node.has_parent_node()){
+        parent = node.get_parent_node()
+        
+        splitNode1 = new Node(node1value, null, this)
+        splitNode2 = new Node(node2value, null, this)
+
+        for(let identifier of node1childrenIdentifiers){
+          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+        }
+        for(let member of node1members){
+          splitNode1.add_data(member)
+        }
+
+        for(let identifier of node2childrenIdentifiers){
+          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+        }
+        for(let member of node2members){
+          splitNode2.add_data(member)
+        }
+
+        parent.swapChildren(node, [splitNode1, splitNode2], ChildRelation.GeospatiallyContainsRelation)
+
+        this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
+        
+      } else {
+        node.clear()
+        let nodeValue = this.createBoundingBox([node1value.bbox(), node2value.bbox()])
+        node.set_value(nodeValue)
+
+        
+        splitNode1 = new Node(node1value, null, this)
+        splitNode2 = new Node(node2value, null, this)
+
+        for(let identifier of node1childrenIdentifiers){
+          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+        }
+        for(let member of node1members){
+          splitNode1.add_data(member)
+        }
+
+        for(let identifier of node2childrenIdentifiers){
+          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+        }
+        for(let member of node2members){
+          splitNode2.add_data(member)
+        }
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2)
+        this.set_root_node_identifier(node.get_identifier())
+
+        parent = node;
+      }
+      
+    }
+
+    let parentChildren = parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
+    if (parentChildren != null && parentChildren.length >= this.maxChildrenSize) {
+      this.splitNode(parent, null);
+    } 
+
+    if (addedMember !== null){
+      // We need to return the node where the treedataobject ended up.
+      if (splitNode1.get_members().indexOf(addedMember) != -1){
+        return splitNode1
+      } else {
+        return splitNode2
+      }
+
+    }
+
+    return node
+    
+  }
+
+  private createBoundingBox(bboxes : Array<Array<number>>) : any{
+    let xmin = Math.min.apply(null, bboxes.map(e => e[0]))
+    let ymin = Math.min.apply(null, bboxes.map(e => e[1]));
+    let xmax = Math.max.apply(null, bboxes.map(e => e[2]));
+    let ymax = Math.max.apply(null, bboxes.map(e => e[3]));
+    let newBBox = [xmin, ymin, xmax, ymax]
+    return this.bboxToGeoJSON(newBBox)
+  }
+
+  private bboxToGeoJSON(bbox : Array<number>) {
+    return new terraformer.Polygon([[[bbox[0], bbox[1]], [bbox[0], bbox[3]], [bbox[2], bbox[3]], [bbox[2], bbox[1]]]])
+  }
+
+  private expandBoundingBox( bbox1 : Array<number>, bbox2 : Array<number>) : Array<number> {
+    return ([Math.min(bbox1[0], bbox2[0]), Math.min(bbox1[1], bbox2[1]), Math.max(bbox1[2], bbox2[2]), Math.max(bbox1[3], bbox2[3])])
+  }
+
+  private getBBoxSize(bbox : Array<number>) : number {
+    return Math.abs(bbox[2] - bbox[0]) * Math.abs(bbox[3] - bbox[1])
+  }
+
+  private getBBox(dataGeoObject : any) {
+    let result = dataGeoObject.bbox()
+    return result === undefined ? new Error("Trying to parse an incorrect wkt string") : result;
+  }
+
+  private findContainingChild(childrenIdentifiers : Array<Identifier>, dataGeoObject : terraformer.Polygon | terraformer.Point) : Node | null{
+    for (let childIdentifier of childrenIdentifiers){
+      if (this.isContained(dataGeoObject, childIdentifier.value)){
+        return this.get_cache().get_node(childIdentifier);
+      }
+    }
+    return null;
+  }
+
+
+  private findContainingOrOverlappingChildren(childrenIdentifiers : Array<Identifier>, dataGeoObject : terraformer.Polygon | terraformer.Point) : Node[]{
+    let children = []
+    for (let childIdentifier of childrenIdentifiers){
+      if (this.isContained(dataGeoObject, childIdentifier.value) || this.isOverlapping(dataGeoObject, childIdentifier.value)){
+        children.push(this.get_cache().get_node(childIdentifier))
+      }
+    }
+    return children;
+  }
+
+  private isContained(dataGeoObject : terraformer.Polygon | terraformer.Point, childGeoObject : terraformer.Polygon | terraformer.Point) : boolean {
+      if (childGeoObject instanceof terraformer.Point)  { return false } // Point cannot contain other polygon or point
+      let childWKTPrimitive = new terraformer.Primitive(childGeoObject)
+      try {
+        return (childWKTPrimitive.contains(dataGeoObject))
+      } catch(err){
+          return false;
+      }
+  }
+
+
+  private isOverlapping(dataGeoObject : terraformer.Polygon | terraformer.Point, childGeoObject : any) : boolean {
+    if (childGeoObject instanceof terraformer.Point || dataGeoObject instanceof terraformer.Point)  { return false } // Point cannot contain other polygon or point
+    let childWKTPrimitive = new terraformer.Primitive(childGeoObject)
+    try {
+      return (childWKTPrimitive.intersects(dataGeoObject))
+    } catch(err){
+        return false;
+    }
+  }
+
+
+  private chooseAxis(entryBboxes : Array<any>) : number { // 0 = split on the X axis, 1 = split on the Y axis
+
+    let [seed1index, seed2index] = this.pickSeeds(entryBboxes) // find two most distant rectangles of the current node
+    let seed1bbox = entryBboxes[seed1index]
+    let seed2bbox = entryBboxes[seed2index]
+    
+    if (seed1bbox[0] > seed2bbox[2] || seed2bbox[0] > seed1bbox[2]){
+      // not overlapping on the x axis
+      if (seed1bbox[1] > seed2bbox[3] ||  seed2bbox[1] > seed1bbox[3] ){
+        let Xdistance = Math.min(Math.abs(seed1bbox[0] - seed2bbox[2]), Math.abs(seed1bbox[0] - seed2bbox[2])) / ( Math.abs(seed1bbox[2] - seed1bbox[0]) + Math.abs(seed2bbox[2] - seed2bbox[0]) )
+        let Ydistance = Math.min(Math.abs(seed1bbox[1] - seed2bbox[3]), Math.abs(seed2bbox[1] - seed1bbox[3])) / ( Math.abs(seed1bbox[3] - seed1bbox[1]) + Math.abs(seed2bbox[3] - seed2bbox[1]) )
+        if (Xdistance > Ydistance) {
+          return 0 // we split the X axis
+        } else {
+          return 1 // we split the Y axis
+        }
+      } else {
+        // overlapping Y axis
+        return 0 // so we split X axis
+      }
+    } else {
+      // overlap on the X axis
+      return 1 // So we need to split on the Y axis
+    }
+  }
+
+  private pickSeeds(boundingBoxList : Array<Array<number>>) : number[]{
+    let maxDValue = 0
+    let maxDItemIndices = [0, 1]
+
+    for (let i = 0; i < boundingBoxList.length - 1; i++){
+      for (let j = i + 1; j < boundingBoxList.length; j++){
+        let R = this.expandBoundingBox(boundingBoxList[i], boundingBoxList[j])
+        let d = this.getBBoxSize(R) - this.getBBoxSize(boundingBoxList[i]) - this.getBBoxSize(boundingBoxList[j])
+
+        if (d > maxDValue){
+          maxDValue = d;
+          maxDItemIndices = [i, j]
+        }
+      }
+    }
+    return maxDItemIndices;
+  }
+
+
+}
