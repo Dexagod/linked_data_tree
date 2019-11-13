@@ -1,11 +1,10 @@
 {
-  "name": "ldtree",
+  "name": "linkeddatatree",
   "version": "1.0.0",
   "description": "Linked data indexing tree implementation",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "test": "mocha -r ts-node/register tests/**/*.test.ts --timeout 1000000",
-    "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test",
     "build": "tsc"
   },
   "author": "Ruben Dedecker",
@@ -18,7 +17,7 @@
     "nyc": "^14.1.1",
     "ts-node": "^8.4.1",
     "typescript": "^3.6.3",
-    "@frogcat/ttl2jsonld": "0.0.4",
+    "@frogcat/ttl2jsonld": "0.0.4"
   },
   "dependencies": {
     "@dexagod/string_normalizer": "^1.0.0",

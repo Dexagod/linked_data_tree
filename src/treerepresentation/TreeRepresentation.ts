@@ -74,8 +74,4 @@ export abstract class TreeRepresentation{
         return this.tree
     }
 
-    getCollectionFileLocation(){
-        return this.treeLocation + this.treeFile;
-    }
-
 }

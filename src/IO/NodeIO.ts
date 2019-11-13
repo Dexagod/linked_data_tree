@@ -118,6 +118,7 @@ export class NodeIO{
   
   encode_wrapper(encodedNode : any, encodedMembers: any, encodedMembersMetadata : any, totalItems = 0){
     return {
+      "@context": context,
       "@id": this.getCollectionId(),
       "@type" : "hydra:collection",
       "hydra:totalItems" : totalItems,
@@ -154,7 +155,7 @@ export class NodeIO{
     }
     
     let writtenNode: EncodedNode = {
-      "@id": this.getNodeLocation( node.get_node_id()),
+      "@id": this.getNodeIdFromIdentifier( node.get_node_id()),
       "@type": "tree:Node",
       "value": this.encode_node_value(node.value),
       "hydra:totalItems": node.total_children_count,
@@ -170,7 +171,7 @@ export class NodeIO{
     if (parentNode !== null){
       writtenNode["parent_node"] = 
         {
-          "@id": this.getNodeLocation( parentNode.nodeId ),
+          "@id": this.getNodeIdFromIdentifier( parentNode.nodeId ),
           "@type": "tree:Node"
         }
     }
@@ -243,28 +244,34 @@ export class NodeIO{
     // TODO:: set shacl path
     return  {
       "@type" : this.relationToString(relation),
-      "tree:node" : this.getNodeLocation(childNodeIdentifier.nodeId),
-      "value" : childNodeIdentifier.value,
+      "tree:node" : { '@id' : this.getNodeIdFromIdentifier(childNodeIdentifier.nodeId), '@type' : 'tree:Node'},
+      "value" : this.encode_node_value(childNodeIdentifier.value),
     }
   }
 
   decode_relation(childRelationObject : any){
     // TODO:: process shacl path
     let childRelationType = this.stringToRelation(childRelationObject["@type"].substring(5))
-    let childNodeIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"], childRelationObject["value"]) 
+    let childNodeIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]['@id'], this.decode_node_value(childRelationObject["value"]))
     return [childRelationType, childNodeIdentifier]
   }
 
   private getCollectionId(){
-    this.sourceDirectory + this.treeLocation + this.treeFile
+    return this.getNodeIdFromIdentifier(0) + "#collection"
   }
 
   getNodeLocation(nodeId: number){
     return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
+    // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
+  }
+  
+  getNodeIdFromIdentifier(nodeId: number){
+    return "/" + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }
   
   retrieveNodeIdentifier(str: string, value: any): Identifier{
-    let nodeId = str.replace(this.sourceDirectory + this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
+    // let nodeId = str.replace(this.sourceDirectory + this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
+    let nodeId = str.replace(this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
     if (nodeId === null) { throw new Error("requesting node with null id") }
     else { return new Identifier(parseInt(nodeId), value); }
   }
