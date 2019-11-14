@@ -146,16 +146,13 @@ export class RTree extends Tree{
 
 
       let entryBboxes = node.get_members().map(e => e.get_representation().bbox())
-      let splitAxis = this.chooseAxis(entryBboxes) // 0 == split on X axis, 1 == split on Y axis
+      let splitAxis = this.chooseAxis(entryBboxes, node.get_value().bbox()) // 0 == split on X axis, 1 == split on Y axis
       if (splitAxis !== 0 && splitAxis !== 1) { throw new Error("invalid axis passed to the distribute function") }
 
       let items = node.get_members()
 
-      if (splitAxis === 0) {
-        items.sort((a, b) => (this.getBBox(a.get_representation())[0] > this.getBBox(b.get_representation())[0]) ? 1 : -1)
-      } else {
-        items.sort((a, b) => (this.getBBox(a.get_representation())[1] > this.getBBox(b.get_representation())[1]) ? 1 : -1)
-      }
+      items.sort((a, b) => (this.getBBox(a.get_representation())[splitAxis] > this.getBBox(b.get_representation())[splitAxis]) ? 1 : -1)
+    
       let node2items = items.splice(Math.floor(items.length / 2), items.length);
 
       if (node.has_parent_node()){
@@ -190,7 +187,7 @@ export class RTree extends Tree{
       let entryBboxes = childrenIdentifiers.map(e => e.value.bbox())
       let membersEntryBboxes = node.get_members().map(e => e.get_representation().bbox())
       let totalEntryBBoxes = entryBboxes.concat(membersEntryBboxes)
-      let splitAxis = this.chooseAxis(totalEntryBBoxes) // 0 == split on X axis, 1 == split on Y axis
+      let splitAxis = this.chooseAxis(totalEntryBBoxes, node.get_value().bbox()) // 0 == split on X axis, 1 == split on Y axis
 
       let node1members = new Array()
       let node2members =  new Array()
@@ -370,30 +367,72 @@ export class RTree extends Tree{
   }
 
 
-  private chooseAxis(entryBboxes : Array<any>) : number { // 0 = split on the X axis, 1 = split on the Y axis
+  private chooseAxis(entryBboxes : Array<any>, containerBBox : any) : number { // 0 = split on the X axis, 1 = split on the Y axis
 
     let [seed1index, seed2index] = this.pickSeeds(entryBboxes) // find two most distant rectangles of the current node
     let seed1bbox = entryBboxes[seed1index]
     let seed2bbox = entryBboxes[seed2index]
-    
-    if (seed1bbox[0] > seed2bbox[2] || seed2bbox[0] > seed1bbox[2]){
-      // not overlapping on the x axis
-      if (seed1bbox[1] > seed2bbox[3] ||  seed2bbox[1] > seed1bbox[3] ){
-        let Xdistance = Math.min(Math.abs(seed1bbox[0] - seed2bbox[2]), Math.abs(seed1bbox[0] - seed2bbox[2])) / ( Math.abs(seed1bbox[2] - seed1bbox[0]) + Math.abs(seed2bbox[2] - seed2bbox[0]) )
-        let Ydistance = Math.min(Math.abs(seed1bbox[1] - seed2bbox[3]), Math.abs(seed2bbox[1] - seed1bbox[3])) / ( Math.abs(seed1bbox[3] - seed1bbox[1]) + Math.abs(seed2bbox[3] - seed2bbox[1]) )
-        if (Xdistance > Ydistance) {
-          return 0 // we split the X axis
-        } else {
-          return 1 // we split the Y axis
-        }
-      } else {
-        // overlapping Y axis
-        return 0 // so we split X axis
-      }
-    } else {
-      // overlap on the X axis
-      return 1 // So we need to split on the Y axis
+
+    let Xdistance = 0
+    let Ydistance = 0
+    let Xoverlap = false
+    let Yoverlap = false
+
+    let containerXsize = Math.abs(containerBBox[2] - containerBBox[0])
+    let containerYsize = Math.abs(containerBBox[3] - containerBBox[1])
+
+    let [smallestXaxisBBox, largestXaxisBBox] = seed1bbox[0] < seed2bbox[0] ? [seed1bbox, seed2bbox] : [seed2bbox, seed1bbox]
+
+    if (smallestXaxisBBox[0] < largestXaxisBBox[0]){
+      if (smallestXaxisBBox[2] < largestXaxisBBox[0]){
+        // no overlap on X axis
+        Xdistance = Math.abs(largestXaxisBBox[0] - smallestXaxisBBox[2]) / containerXsize
+        Xoverlap = false;
+      } else if (smallestXaxisBBox[2] < largestXaxisBBox[2]){
+        // Both bboxes overlap on X axis
+        Xdistance = Math.abs(smallestXaxisBBox[2] - largestXaxisBBox[0]) / containerXsize
+        Xoverlap = true;
+      } else if (smallestXaxisBBox[2] < largestXaxisBBox[0]){
+        // full overlap (node 2 in node 1 on X axis)
+        Xdistance = Math.abs(largestXaxisBBox[2] - largestXaxisBBox[0]) / containerXsize
+        Xoverlap = true;
+      } 
     }
+
+
+    let [smallestYaxisBBox, largestYaxisBBox] = seed1bbox[1] < seed2bbox[1] ? [seed1bbox, seed2bbox] : [seed2bbox, seed1bbox]
+
+    if (smallestYaxisBBox[1] < largestYaxisBBox[1]){
+      if (smallestYaxisBBox[3] < largestYaxisBBox[1]){
+        // no overlap on Y axis
+        Ydistance = Math.abs(largestYaxisBBox[1] - smallestYaxisBBox[3]) / containerYsize
+        Yoverlap = false;
+      } else if (smallestYaxisBBox[3] < largestYaxisBBox[3]){
+        // Both bboxes overlap on Y axis
+        Ydistance = Math.abs(smallestYaxisBBox[3] - largestYaxisBBox[1]) / containerYsize
+        Yoverlap = true;
+      } else if (smallestYaxisBBox[3] < largestYaxisBBox[1]){
+        // full overlap (node 2 in node 1 on Y axis)
+        Ydistance = Math.abs(largestYaxisBBox[3] - largestYaxisBBox[1]) / containerYsize
+        Yoverlap = true;
+      } 
+    }
+
+    if (Xoverlap){
+      if (Yoverlap){
+        // yes Xoverlap, yes Yoverlap
+        return Xdistance < Ydistance ?  0 : 1 // Split on the smallest distance => x distance smaller -> split X axis ( = 0 )
+      } else {
+        // yes Xoverlap, no Yoverlap
+        return 1 // So we split the Y axis
+      }
+    } else if (Yoverlap){
+      // no Xoverlap, yes Yoverlap
+        return 0 // So we split the X axis
+    } else {
+      // no Xoverlap, no Yoverlap
+      return Xdistance < Ydistance ?  1 : 0 // Split on the largest distance => y distance bigger -> split y axis ( = 1 )
+    } 
   }
 
   private pickSeeds(boundingBoxList : Array<Array<number>>) : number[]{
