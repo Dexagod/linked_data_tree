@@ -58,7 +58,7 @@ export abstract class Tree {
      */
     adjust_root_node(node: Node) {
         if (this.root_node_identifier === null) { throw new Error("Cannot adjust root node fragment because root node is null")}
-        this.set_root_node_identifier(new Identifier(node.get_node_id(), node.get_value()))
+        this.set_root_node_identifier(new Identifier(node.get_node_id(), node.get_identifier().value))
     }
 
     /**

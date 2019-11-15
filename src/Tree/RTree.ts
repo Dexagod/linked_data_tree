@@ -40,11 +40,11 @@ export class RTree extends Tree{
   }
 
   addMemberToNode(currentNode : Node, member : Member){
-    if (! this.isContained(member.get_representation(), currentNode.get_value())){
-      let currentNodeBBox = currentNode.get_value().bbox()
+    if (! this.isContained(member.get_representation(), currentNode.get_identifier().value)){
+      let currentNodeBBox = currentNode.get_identifier().value.bbox()
       let dataBBox = member.get_representation().bbox()
       if (currentNodeBBox === undefined || dataBBox === undefined) {throw new Error("bbox was undefined")}
-      currentNode.set_value( this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox)))
+      currentNode.identifier.value = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
     }
     currentNode.add_data(member);
     
@@ -61,28 +61,25 @@ export class RTree extends Tree{
 
   private _search_data_recursive(currentNode : Node, area: terraformer.Polygon | terraformer.Point) : Array<Member>{
     let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
+    let retultingMembers :  Array<Member> = new Array();
     if (childrenIdentifiers !== null) {
       let containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area)
 
       if (containingChildren.length === 0){
         return [];
       } else {
-        let childrenResults :  Array<Member> = new Array();
         containingChildren.forEach(child => {
-          childrenResults.concat(this._search_data_recursive(child, area))
+          retultingMembers = retultingMembers.concat(this._search_data_recursive(child, area))
         });
-        return childrenResults;
-        
+
       }
-    } else { // leaf node
-      let members : Array<Member> = new Array();
-      currentNode.members.forEach(tdo => {
-        if (this.isContained(tdo.get_representation(), area)){
-          members.push(tdo)
-        }
-      })
-      return members
     }
+    currentNode.members.forEach(tdo => {
+      if (this.isContained(tdo.get_representation(), area)){
+        retultingMembers.push(tdo)
+      }
+    })
+    return retultingMembers
   }
 
   private findClosestBoundingBoxIndex(currentNode : Node, dataWKTstring : any) : Node {
@@ -113,7 +110,7 @@ export class RTree extends Tree{
       }
     }
 
-    let currentNodeBBox = currentNode.get_value().bbox();
+    let currentNodeBBox = currentNode.get_identifier().value.bbox();
     let expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, currentNodeBBox)
     let expandedBboxSize = this.getBBoxSize(expandedBoundingBox)
     let currentNodeAdditionSizeDifference = expandedBboxSize - this.getBBoxSize(currentNodeBBox)
@@ -126,7 +123,7 @@ export class RTree extends Tree{
       let newIdentifier = new Identifier(oldIdentifier.nodeId, newValue)
       currentNode.update_child(oldIdentifier, newIdentifier)
       let node = this.get_cache().get_node(oldIdentifier);
-      node.set_value(newValue)
+      node.identifier.value = newValue
       return node;
     }
     //todo : update child value, update child value in the parent identifier for the child
@@ -146,7 +143,7 @@ export class RTree extends Tree{
 
 
       let entryBboxes = node.get_members().map(e => e.get_representation().bbox())
-      let splitAxis = this.chooseAxis(entryBboxes, node.get_value().bbox()) // 0 == split on X axis, 1 == split on Y axis
+      let splitAxis = this.chooseAxis(entryBboxes, node.get_identifier().value.bbox()) // 0 == split on X axis, 1 == split on Y axis
       if (splitAxis !== 0 && splitAxis !== 1) { throw new Error("invalid axis passed to the distribute function") }
 
       let items = node.get_members()
@@ -157,26 +154,34 @@ export class RTree extends Tree{
 
       if (node.has_parent_node()){
         parent = node.get_parent_node()
-        splitNode1 = new Node(this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation()))), parent, this)
-        splitNode2 = new Node(this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation()))), parent, this)
+        let node1value = this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation())))
+        let node2value = this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation())))
+        splitNode1 = new Node(node1value, parent, this)
+        splitNode2 = new Node(node2value, parent, this)
 
         splitNode1.set_members(items)
         splitNode2.set_members(node2items)
-        parent.swapChildren(node, [splitNode1, splitNode2], ChildRelation.GeospatiallyContainsRelation)
+        
+        let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
+        let newChildrenList = [splitNode1, splitNode2]
+        let valuesList = [node1value, node2value]
+        parent.swapChildren(node, relationsList, newChildrenList, valuesList)
 
         this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
 
       } else {
         // node is the root node of the tree (and since no children also the only node in the tree)
-        splitNode1 = new Node(this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation()))), node, this)
-        splitNode2 = new Node(this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation()))), node, this)
+        let node1value = this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation())))
+        let node2value = this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation())))
+        splitNode1 = new Node(node1value, node, this)
+        splitNode2 = new Node(node2value, node, this)
         
         splitNode1.set_members(items)
         splitNode2.set_members(node2items)
         node.deleteMembers()
 
-        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1)
-        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
         this.set_root_node_identifier(node.get_identifier())
 
         parent = node;
@@ -187,7 +192,7 @@ export class RTree extends Tree{
       let entryBboxes = childrenIdentifiers.map(e => e.value.bbox())
       let membersEntryBboxes = node.get_members().map(e => e.get_representation().bbox())
       let totalEntryBBoxes = entryBboxes.concat(membersEntryBboxes)
-      let splitAxis = this.chooseAxis(totalEntryBBoxes, node.get_value().bbox()) // 0 == split on X axis, 1 == split on Y axis
+      let splitAxis = this.chooseAxis(totalEntryBBoxes, node.get_identifier().value.bbox()) // 0 == split on X axis, 1 == split on Y axis
 
       let node1members = new Array()
       let node2members =  new Array()
@@ -232,47 +237,51 @@ export class RTree extends Tree{
         splitNode2 = new Node(node2value, null, this)
 
         for(let identifier of node1childrenIdentifiers){
-          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value)
         }
         for(let member of node1members){
           splitNode1.add_data(member)
         }
 
         for(let identifier of node2childrenIdentifiers){
-          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value)
         }
         for(let member of node2members){
           splitNode2.add_data(member)
         }
 
-        parent.swapChildren(node, [splitNode1, splitNode2], ChildRelation.GeospatiallyContainsRelation)
+
+        let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
+        let newChildrenList = [splitNode1, splitNode2]
+        let valuesList = [node1value, node2value]
+        parent.swapChildren(node, relationsList, newChildrenList, valuesList)
 
         this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
         
       } else {
         node.clear()
         let nodeValue = this.createBoundingBox([node1value.bbox(), node2value.bbox()])
-        node.set_value(nodeValue)
+        node.identifier.value = nodeValue
 
         
         splitNode1 = new Node(node1value, null, this)
         splitNode2 = new Node(node2value, null, this)
 
         for(let identifier of node1childrenIdentifiers){
-          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+          splitNode1.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value)
         }
         for(let member of node1members){
           splitNode1.add_data(member)
         }
 
         for(let identifier of node2childrenIdentifiers){
-          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier))
+          splitNode2.add_child(ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value)
         }
         for(let member of node2members){
           splitNode2.add_data(member)
         }
-        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1)
-        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value)
+        node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
         this.set_root_node_identifier(node.get_identifier())
 
         parent = node;

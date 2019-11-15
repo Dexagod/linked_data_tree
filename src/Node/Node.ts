@@ -3,13 +3,13 @@ import { ChildRelation } from '../Relations/ChildRelation';
 import { Member } from '../DataObjects/Member';
 import { Cache } from "../Cache/Cache";
 import { Identifier } from '../Identifier';
+import { Relation } from '../Relation';
 
 export class Node {
 
     identifier : Identifier;
-    value: any;
     members: Array < Member > ;
-    children: Map < ChildRelation, Array < Identifier >> ; // M&p <relation, [fragmentId, nodeId]>
+    children: Array < Relation >; 
     
     parent_node:  Identifier| null;
     fc: Cache;
@@ -18,9 +18,8 @@ export class Node {
 
     constructor(value: any, parent_node: Node | null, tree: Tree) {
         this.identifier = new Identifier(tree.provide_node_id(), value);
-        this.value = value;
         this.members = new Array();
-        this.children = new Map();
+        this.children = new Array();
         // Initialize the fragment cache from the given tree.
         this.fc = tree.get_cache();
         if (parent_node !== null) {
@@ -43,34 +42,19 @@ export class Node {
     get_parent_node_identifier(): Identifier | null {
         return this.parent_node;
     }
-
-    set_value(value : any) {
-        this.value = value;
-        this.identifier.value = value;
-        if (this.has_parent_node()){
-            let oldIdentifier = this.get_identifier();
-            let newIdentifier = new Identifier(oldIdentifier.nodeId, value)
-            this.get_parent_node().update_child(oldIdentifier, newIdentifier)
-        }   
-    }
-
+    
     // This function adds a child node to this node.
     // The parent node is set upon creation
     // This method does not propagate the new information in the node. Needed when replacing an old node for multiple new nodes.
-    add_child_no_propagation(childRelation: ChildRelation, childNode: Node) {
-        let updatedChildrenArray = this.children.get(childRelation)
-        if (updatedChildrenArray === undefined || updatedChildrenArray === null) {
-            updatedChildrenArray = [childNode.get_identifier()]
-        } else {
-            updatedChildrenArray.push(childNode.get_identifier())
-        }
-        this.children.set(childRelation, updatedChildrenArray);
+    add_child_no_propagation(childRelation: ChildRelation, childNode: Node, value : any) {
+        let relation = new Relation(childRelation, value, childNode.get_identifier())
+        this.children.push(relation);
         childNode.set_parent_node(this);
     }
 
     // Add a child node to this node and propagate the new information.
-    add_child(childRelation: ChildRelation, node: Node) {
-        this.add_child_no_propagation(childRelation, node);
+    add_child(childRelation: ChildRelation, node: Node, value : any) {
+        this.add_child_no_propagation(childRelation, node, value);
         this.propagate_children_count(node.get_total_children_count() + 1)
     }
 
@@ -84,7 +68,7 @@ export class Node {
     }
 
     has_child_relations() : boolean {
-        return this.children.size > 0;
+        return this.children.length > 0;
     }
 
     propagate_children_count(increment: number) {
@@ -95,39 +79,17 @@ export class Node {
     }
 
     // Removes a child node from this node
-    // Compares on value so no need for the same Node object
     remove_child(node: Node) {
-
-        let toRemoveIndex : number | null = null
-        let toRemoveRelation  : ChildRelation | null = null
-
-        this.children.forEach((identifierArray: Array < Identifier > , childRelation: ChildRelation) => {
-            identifierArray.forEach((identifier, index) => {
-                if (identifier.equals(node.get_identifier())){
-                    toRemoveIndex = index;
-                    toRemoveRelation = childRelation
-                    
-                }
-            });
-        });;
-        
-        if (toRemoveIndex !== null && toRemoveRelation !== null) {
-            let removeRelationChildren = this.children.get(toRemoveRelation);
-            if (removeRelationChildren === undefined) { throw new Error ('childrelation returned undefined while trying to remove child node from node')}
-            removeRelationChildren.splice(toRemoveIndex, 1)
-            this.children.set(toRemoveRelation, removeRelationChildren)
-
-            if (removeRelationChildren.length === 0){
-                this.children.delete(toRemoveRelation);
+        let newRelations = new Array<Relation>();
+        for (let relation of this.children){
+            if (! relation.identifier.equals(node.get_identifier())){
+                newRelations.push(relation)
             }
-
-            return
-        } else {
-            console.error("Trying to remove non-existing child node");
         }
+        this.children = newRelations;
     }
 
-    swapChildren(oldChild : Node, newChildren : Array<Node>, childRelation : ChildRelation){
+    swapChildren(oldChild : Node, relations : Array<ChildRelation>, newChildren : Array<Node>, values : Array<any>){
         let newChildrenCount = 0
         for (let child of newChildren){
             newChildrenCount += child.get_total_children_count() + 1
@@ -137,8 +99,11 @@ export class Node {
         let childCountDifference = newChildrenCount - oldChildrenCount
         this.remove_child(oldChild);
         
-        for (let child of newChildren){
-            this.add_child_no_propagation(childRelation, child);
+        for (let i = 0; i < newChildren.length; i++){
+            let childRelation = relations[i]
+            let childNode = newChildren[i]
+            let relationValue = values[i]
+            this.add_child_no_propagation(childRelation, childNode, relationValue);
         }
         this.propagate_children_count(childCountDifference);
 
@@ -146,92 +111,58 @@ export class Node {
 
     clear(){
         this.members = new Array();
-        this.children = new Map();
-        this.value = null;
+        this.children = new Array();
         this.parent_node = null;
         this.total_children_count = 0;
     }
     
     clearChildren(){
-        this.children = new Map();
+        this.children = new Array();
     }
 
     get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier> | null {
-        if (!this.children.has(childRelation)) {
-            return null;
+        let returnList = new Array()
+        for (let relation of this.children){
+            if (relation.type === childRelation){
+                returnList.push(relation.identifier)
+            }
         }
-        let childrenIdentifiersWithRelation = this.children.get(childRelation);
-        if (childrenIdentifiersWithRelation === undefined) { throw new Error(" ChildRelation returns undefined instead of children items ")}
-            
-        return childrenIdentifiersWithRelation;
+        return returnList
     }
 
 
     get_children_with_relation(childRelation: ChildRelation): Array<Node> | null {
-        if (!this.children.has(childRelation)) {
-            return null;
-        }
-        let childrenIdentifiersWithRelation = this.children.get(childRelation);
-        if (childrenIdentifiersWithRelation === undefined) { throw new Error(" ChildRelation returns undefined instead of children items ")}
-        let childrenArray = new Array<Node>();
-        for (let identifier of childrenIdentifiersWithRelation){
-            childrenArray.push(this.fc.get_node(identifier))
-        }
-        
-        return childrenArray;
+        let identifierList = this.get_children_identifiers_with_relation(childRelation);
+        if (identifierList === null) {return null;}
+        return identifierList.map((identifier : Identifier) => this.fc.get_node(identifier))
     }
 
     // Updates the child node.
     // Used when child changes fragment, so the parent needs to update the child fragment id in its children.
     update_child(oldIdentifier : Identifier, newIdentifier : Identifier) {
-        this.children.forEach((identifierArray: Array < Identifier > , key: ChildRelation) => {
-            identifierArray.forEach((identifier, index) => {
-                if (identifier.equals(oldIdentifier)){
-                    identifierArray[index] = newIdentifier;
-                    return;
-                }
-            });
-        });
+        for (let relation of this.children){
+            if (relation.identifier.equals(oldIdentifier)){
+                relation.identifier = newIdentifier
+            }
+        }
     }
 
     // Returns the objects of all children for iteration purposes.
     get_children_objects(): Array<Node> {
-        let fc = this.fc
-        let childrenObjects = new Array<Node>();
-        let vals = this.children.values()
-        let nextRelation = vals.next()
-        while(nextRelation.done === false){
-            for (let identifier of nextRelation.value){
-                childrenObjects.push( fc.get_node(identifier) )
-            }
-            nextRelation = vals.next();
-        }
-        return childrenObjects;
+        return this.children.map((relation : Relation) => this.fc.get_node(relation.identifier))
     }
 
     get_child_by_value(value : any) : Node | null{
-        let vals = this.children.values()
-        let nextRelation = vals.next()
-        while(nextRelation.done === false){
-            for (let identifier of nextRelation.value){
-                if (identifier.value === value){
-                    return this.fc.get_node(identifier)
-                }
-            }
-            nextRelation = vals.next();
-        }
-        return null;
-    }
-
-    // Returns the amount of children this node has.
-    get_child_count(): number {
-        return Object.keys(this.children).length;
+        let childrenWithValue = new Array<Node>()
+        this.children.map((relation : Relation) => {if (relation.value === value) { childrenWithValue.push(this.fc.get_node(relation.identifier))}})
+        if (childrenWithValue.length !== 1) {return null}
+        return childrenWithValue[0];
     }
 
     // Set the children of this node
     // Destructive function!
     // Use only when transfering children from existing node to a newly created node
-    set_children(new_children: Map<ChildRelation, Array<Identifier>>) {
+    set_children(new_children: Array<Relation>) {
         this.children = new_children
         this.update_children()
     }
@@ -248,15 +179,8 @@ export class Node {
     }
 
     // Return sthe children dict
-    get_children() : Map<ChildRelation, Array<Identifier>> {
+    get_children() : Array<Relation> {
         return this.children;
-    }
-    
-    /**
-     * Returns the value of this node.
-     */
-    get_value() {
-        return this.value;
     }
 
     deleteMembers(){

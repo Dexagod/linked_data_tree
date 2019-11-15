@@ -90,11 +90,11 @@ export class Normalizer {
     ];
   
     var pattSpace = /[-_]/g;
-    var pattNoSpace = /[\`\´\'\"]/g;
+    var pattNoSpace = /[\`\´\'\"()]/g;
 
     for(var i=0; i<defaultDiacriticsRemovalMap.length; i++) {
         str = str.replace(defaultDiacriticsRemovalMap[i].letters, defaultDiacriticsRemovalMap[i].base);
     }
-    return str.trim().toLocaleLowerCase().replace(pattSpace, " ").replace(pattNoSpace, "")
+    return str.trim().toLocaleLowerCase().replace(pattSpace, " ").replace(pattNoSpace, "").replace(/\s\s+/g, ' ');
   }
 }

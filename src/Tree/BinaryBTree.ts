@@ -2,78 +2,94 @@ import { Tree } from './Tree';
 import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 import { ChildRelation } from '../Relations/ChildRelation';
+import { Identifier } from '../Identifier';
 
 
 export class BinaryBTree extends Tree {
 
   /**
-     * Adds the given data to the tree.
-     * @param {Member} member 
-     */
-    addData(representation : any, member: Member) : Node | null{
-      if(this.node_count === 0) {
-          return this.createFirstNode(representation, member);
-      }
-      let repr = representation;
-      // Check for invalid object.
-      // Object must have a representation.
-      if (repr == "" || repr == null) {
-          return null;
-      }
-      // Iterate the tree lettergroup per lettergroup.
-      let node = this.get_root_node();
-      let newnode : Node | null = node;
-      while (newnode !== null) {
-          node = newnode;
-          // Check if the node has a child node containing the next letter
-          let comparison = repr.localeCompare(node.get_value())
-          if (comparison > 0) {
-              newnode = node.get_only_child_with_relation(ChildRelation.GreaterThanRelation)
-          } else if(comparison === 0) {
-              break;
-          } else {
-              newnode = node.get_only_child_with_relation(ChildRelation.LesserThanRelation)
-          }
+   * Adds the given data to the tree.
+   * @param {Member} member 
+   */
+  addData(representation : any, member : Member) : Node | null{
+    if(this.node_count === 0) {
+      this.createFirstNode("", null)
+    }
+    // Check for invalid object.
+    // Object must have a representation.
+    if (representation == "" || representation == null){
+      return null;
+    }
+    return this.recursiveAddition(this.get_root_node(), member, representation, null)
+  }
+  
+  private recursiveAddition(currentNode : Node, member : Member, value : any, nodeWithSpace : Node | null) : Node {
+    if (currentNode.has_child_relations()){
 
+      let intervalMap = this.getIntervals(this.getList(currentNode.get_children_identifiers_with_relation(ChildRelation.LesserOrEqualThanRelation)), 
+                                        this.getList(currentNode.get_children_identifiers_with_relation(ChildRelation.GreaterThanRelation)))
+      for (let childId of Array.from(intervalMap.keys())){
+        if (intervalMap.get(childId).start < value < intervalMap.get(childId).end){
+          recursiveAddition(this.get_cache().get_node_by_id(childId))
+        }
       }
-
-      if (repr.localeCompare(node.get_value()) > 0) {
-          node = this.addChildNode(ChildRelation.GreaterThanRelation, node, repr);
-      } else if (repr.localeCompare(node.get_value()) < 0){
-          node = this.addChildNode(ChildRelation.LesserThanRelation, node, repr);
-      }
-
-      node.add_data(member);
-      return node;
+    } 
   }
 
-  addChildNode(relation: ChildRelation, parent: Node, repr: string) {
-      let childnode = new Node(repr, parent, this);
-      parent.add_child(relation, childnode);
-      return childnode;
+  private getIntervals(lesserThanOrEqualRelationIdentifiers : Array<Identifier>, greaterThanRelationIdentifiers : Array<Identifier>){
+    let relationMap = new Map()
+    for (let childIdentifier of lesserThanOrEqualRelationIdentifiers){
+      this.addToIntervalMap(relationMap, childIdentifier.nodeId , null, childIdentifier.value)
+    }
+    for (let childIdentifier of greaterThanRelationIdentifiers){
+      this.addToIntervalMap(relationMap, childIdentifier.nodeId , childIdentifier.value, null)
+    }
+    return relationMap
   }
 
+  private getList(list : Array<any> | null) : Array<any> {
+    if (list === null){
+      return []
+    } return list;
+  }
+
+  private splitNode(node : Node, addedString : string, currentNodePathString : string) : Node {
+    
+  }
 
   /**
-   * The given dataobject is searched in the tree.
-   * For testing and debugging purposes.
-   * @param {DataObject} searched_member 
-   */
-  searchData(value : any) : Array<Member> | null{
-      let representation = value;
-      let node: Node = this.get_root_node();
-      let newNode: Node | null = node;
-      while (newNode !== null && newNode.get_value() !== value){
-          node = newNode;
-          if (representation.localeCompare(node.get_value()) < 0){
-              newNode = node.get_only_child_with_relation(ChildRelation.LesserThanRelation)
-          } else {
-              newNode = node.get_only_child_with_relation(ChildRelation.GreaterThanRelation)
-          }
-      }
-      if (newNode !== null){
-          node = newNode;
-      }
-      return node.get_members()
+  * The given dataobject is searched in the tree.
+  * For testing and debugging purposes.
+  * @param {DataObject} searched_member 
+  */
+  searchData(value : any): Member[] {
+    return this._search_data_recursive(this.get_root_node(), value)
+  }
+  
+  private _search_data_recursive(currentNode : Node, searchString : string) : Array<Member>{
+    throw new Error("MethodNotYetImplemented")
+  }
+
+
+
+  private addToIntervalMap(map : Map<any, any>, id : any, start : any, end : any) {
+    if (! map.has(id)){
+      let interval : Interval = { start : -Infinity , end : Infinity } 
+      map.set(id, interval)
+    } 
+    let updatedInterval = map.get(id)
+    updatedInterval.start = (start !== null && start !== undefined) ? start : updatedInterval.start
+    updatedInterval.end = (end !== null && end !== undefined) ? end : updatedInterval.end
+    map.set(id, updatedInterval)
   }
 }
+  
+
+interface Interval {
+  start : any;
+  end : any;
+}
+  
+    
+
+

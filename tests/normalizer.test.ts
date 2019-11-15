@@ -13,5 +13,7 @@
 //     expect(normalize("Sint-Denijslaan")).to.equal("sint denijslaan");
 //     expect(normalize("A\"p'p´e`l")).to.equal("appel");
 //     expect(normalize("t_e-s_t")).to.equal("t e s t");
+//     expect(normalize("ap(pe)l")).to.equal("appel");
+//     expect(normalize("a b  c      d")).to.equal("a b c d");
 //   })
 // });

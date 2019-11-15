@@ -12,7 +12,7 @@ import fs = require("fs")
 
 let sourceDirectory = "tests/testdata/"
 let sourceFile = "tests/straatnamen20k.txt"
-let maxFragmentSize = 1000
+let maxFragmentSize = 500
 let maxCachedFragments = 10000
 
 let RTreeStringDataLocation = "rtree_streets/"
@@ -43,8 +43,8 @@ describe('RTree tests', () => {
 
   let count = 0
   it('Adding a single item to tree', () => {
-    let long = 10//(Math.random() * 2) + 2;
-    let lat = 20//(Math.random() * 3) + 50;
+    let long = (Math.random() * 2) + 2;
+    let lat = (Math.random() * 3) + 50;
     let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
                                   @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
                                   @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
@@ -52,7 +52,7 @@ describe('RTree tests', () => {
     let representation = "POINT (" + lat + " " + long + ")"
     tree.addData(representation, dataObject)
     expect(tree.getTreeObject().node_count).to.equal(1);
-    expect(terraformer_parser.convert(tree.getTreeObject().get_root_node().value)).to.equal(representation);
+    expect(terraformer_parser.convert(tree.getTreeObject().get_root_node().get_identifier().value)).to.equal(representation);
 
   });
 
@@ -127,61 +127,19 @@ describe('RTree tests', () => {
 
 });
 
-  function checkItems(currentNode : Node){
-    let totalItems = 0
-      for ( let child of currentNode.get_children_objects() ){
-        checkItems(child)
-        totalItems += child.get_total_children_count() + 1;
-      }
-
-      expect(terraformer_parser.convert(currentNode.value)).to.equal(currentNode.get_identifier().value);
-      
-      let childrenIdentifierArrays = currentNode.children.values();
-      let next = childrenIdentifierArrays.next();
-      while (! next.done){
-
-        if (next.value === null || next === undefined){
-          expect(false)
-        } else {
-          next.value.forEach((childIdentifier : Identifier) => {
-            expect(childIdentifier.value).not.null
-          });
-        }
-        next = childrenIdentifierArrays.next();
-      }
-      expect(totalItems).to.equal(currentNode.get_total_children_count());
-  }
-
-
-
-  function printTree(rootNode : Node){
-    console.log("################Tree Start################")
-    printNode(rootNode)
-    console.log("################Tree End################")
-  }
-  function printNode(node : Node){
-    if (node.has_parent_node()){
-      console.log(node.get_value(), node.get_node_id(), node.get_parent_node().get_value(), printNodeChildren(node))
-    } else {
-      console.log(node.get_value(), node.get_node_id(), null, printNodeChildren(node))
+function checkItems(currentNode : Node){
+  let totalItems = 0
+    for ( let child of currentNode.get_children_objects() ){
+      checkItems(child)
+      totalItems += child.get_total_children_count() + 1;
     }
-
-    for (let child of node.get_children_objects()){
-      printNode(child)
+    let childRelationArray = currentNode.children;
+    for (let relation of childRelationArray){
+      expect(relation).not.null
+      expect(relation.identifier).not.null
+      expect(relation.type).not.null
+      expect(relation.value).not.null
     }
+    expect(totalItems).to.equal(currentNode.get_total_children_count());
+}
 
-  }
-
-  function printNodeChildren(node : Node){
-    let nodeVals = node.children.values()
-    let next = nodeVals.next()
-    let childrenString = "";
-    while(! next.done){
-      next.value.forEach(element => {
-          childrenString += element.nodeId + "-" + element.value + "   "
-      });
-      next = nodeVals.next()
-    }
-
-    return childrenString
-  }

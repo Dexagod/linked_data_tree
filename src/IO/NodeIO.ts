@@ -4,6 +4,7 @@ import { ChildRelation } from '../Relations/ChildRelation';
 import { Cache } from "../Cache/Cache";
 import { Identifier } from '../Identifier';
 import { Tree } from '../Tree/Tree';
+import { Relation } from '../Relation';
 
 import fs = require('fs');
 var jsonld = require('jsonld')
@@ -19,7 +20,6 @@ var context = {
   "value": "tree:value",
   "members": "hydra:member",
   "children": "tree:hasChildRelation",
-  "parent_node": "tree:parent",
   "suggestions": "hydra:member",
   "score": "hydra:value",
   "childcount" : "hydra:totalItems",
@@ -131,8 +131,8 @@ export class NodeIO{
   decode_wrapper(wrapper : any){
     let node = wrapper["hydra:view"]
     let members = wrapper["hydra:member"]
-    let membersMetadata =  ["memberMetadata"]
-    let totalItems =  ["hydra:totalItems"]
+    let membersMetadata =  wrapper["memberMetadata"]
+    let totalItems =  wrapper["hydra:totalItems"]
     return [node, members, membersMetadata, totalItems]
   }
 
@@ -147,20 +147,17 @@ export class NodeIO{
     }
 
     let relationList = []
-    for (let entry of Array.from(node.get_children())){
-      let relation = entry[0]
-      for (let childNodeIdentifier of entry[1]){
-        relationList.push(this.encode_relation(relation, childNodeIdentifier))
-      }
+    for (let relation of node.get_children()){
+      relationList.push(this.encode_relation(relation))
     }
     
     let writtenNode: EncodedNode = {
       "@id": this.getNodeIdFromIdentifier( node.get_node_id()),
       "@type": "tree:Node",
-      "value": this.encode_node_value(node.value),
       "hydra:totalItems": node.total_children_count,
       "hydra:manages" : this.nodeManages,
-      "shacl:path" : this.nodePath
+      "shacl:path" : this.nodePath,
+      "metadataValue" : this.encode_node_value(node.get_identifier().value)
     };
     
     if (relationList.length !== 0){
@@ -181,8 +178,9 @@ export class NodeIO{
 
   decode_node(node: any, members : any, membersMetadata : any, fc:Cache){
     Object.setPrototypeOf(node, Node.prototype)
-    let identifier = this.retrieveNodeIdentifier(node["@id"], node["value"]) // node["@id"].replace(this.dataFolder + "fragment", "").replace(".jsonld", "").split("#")
-    node["identifier"] = identifier
+    node["value"] = this.decode_node_value(node["metadataValue"])
+    node["identifier"] = this.retrieveNodeIdentifier(node["@id"], node["value"]) // node["@id"].replace(this.dataFolder + "fragment", "").replace(".jsonld", "").split("#")
+
     delete node["@id"];
     delete node["@type"];
 
@@ -197,18 +195,14 @@ export class NodeIO{
     
     if (node.hasOwnProperty('children')){
       let nodeChildRelationsList = node["children"];
-      node["children"] = new Map()
+      node["children"] = new Array()
 
       for (let nodeChildRelation of nodeChildRelationsList){
-        let [childRelationType, childNodeIdentifier] = this.decode_relation(nodeChildRelation)
-        if (node["children"].has(childRelationType)){
-          node["children"].get(childRelationType).push(childNodeIdentifier)
-        } else {
-          node["children"].set(childRelationType, [childNodeIdentifier])
-        }
+        let relation = this.decode_relation(nodeChildRelation)
+        node["children"].push(relation)
       }
     } else {
-      node["children"] = new Map()
+      node["children"] = new Array()
     }
 
 
@@ -217,11 +211,13 @@ export class NodeIO{
     }
     node["fc"] = fc
     node["total_children_count"] = node["hydra:totalItems"]
-    node["value"] = this.decode_node_value(node["value"])
+
+    
     // delete node["@graph"]
     delete node.members_metadata;
     delete node.suggestions_metadata;
 
+    delete node["metadataValue"]
     delete node["hydra:totalItems"]
     delete node["hydra:manages"]
     delete node["shacl:path"]
@@ -240,20 +236,21 @@ export class NodeIO{
     return member
   }
 
-  encode_relation(relation : ChildRelation, childNodeIdentifier : Identifier){
+  encode_relation(relation : Relation){
     // TODO:: set shacl path
     return  {
-      "@type" : this.relationToString(relation),
-      "tree:node" : { '@id' : this.getNodeIdFromIdentifier(childNodeIdentifier.nodeId), '@type' : 'tree:Node'},
-      "value" : this.encode_node_value(childNodeIdentifier.value),
+      "@type" : this.relationToString(relation.type),
+      "tree:node" : { '@id' : this.getNodeIdFromIdentifier(relation.identifier.nodeId), '@type' : 'tree:Node'},
+      "value" : this.encode_node_value(relation.value),
     }
   }
 
   decode_relation(childRelationObject : any){
     // TODO:: process shacl path
-    let childRelationType = this.stringToRelation(childRelationObject["@type"].substring(5))
-    let childNodeIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]['@id'], this.decode_node_value(childRelationObject["value"]))
-    return [childRelationType, childNodeIdentifier]
+    let relationType = this.stringToRelation(childRelationObject["@type"].substring(5))
+    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]['@id'], this.decode_node_value(childRelationObject["value"]))
+    let relationValue = this.decode_node_value(childRelationObject["value"])
+    return new Relation(relationType, relationValue, relationIdentifier)
   }
 
   private getCollectionId(){
@@ -312,12 +309,12 @@ interface EncodedFragment {
 interface EncodedNode {
   "@id": any,
   "@type": string,
-  "value": string,
   "hydra:totalItems": any;
   "parent_node" ? : any
   "children" ? : any,
   "hydra:manages" : any,
-  "shacl:path" : any
+  "shacl:path" : any,
+  "metadataValue": any
 }
 
 interface ParentNode {
