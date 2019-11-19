@@ -28,14 +28,14 @@ describe('RTree tests', () => {
   var treeManager = new RTreeManager()
   
   let tree = treeManager.createTree(sourceDirectory, 
-                                      RTreeStringDataLocation, 
-                                      RTreeStringLocation, 
-                                      RTreeStringFile, 
-                                      "oslo:StraatNaam",  // manages
-                                      "oslo:StraatNaam",  // shacl:path
-                                      "oslo:label",  // shacl:path
-                                      maxCachedFragments, 
-                                      maxFragmentSize)
+                                    RTreeStringDataLocation, 
+                                    RTreeStringLocation, 
+                                    RTreeStringFile, 
+                                    "oslo:StraatNaam",  // manages
+                                    "oslo:StraatNaam",  // shacl:path
+                                    "oslo:label",  // shacl:path
+                                    maxCachedFragments, 
+                                    maxFragmentSize)
 
   it('creating new Tree object', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);

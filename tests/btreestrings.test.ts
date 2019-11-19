@@ -1,109 +1,153 @@
-// import { expect } from 'chai';
-// // if you used the '@types/mocha' method to install mocha type definitions, uncomment the following line
-// // import 'mocha';
+import { expect } from 'chai';
+// if you used the '@types/mocha' method to install mocha type definitions, uncomment the following line
+// import 'mocha';
 
-// import { Node } from "../src/Node/Node"
-// import { Member } from "../src/DataObjects/Member"
-// import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
-// import { BinaryBTreeManager } from '../src/treemanager/BinaryBTreeManager';
-// import { Identifier } from '../src/Identifier';
-// const ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
+import { Node } from "../src/Node/Node"
+import { Member } from "../src/DataObjects/Member"
+import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
+import { BinaryBTreeManager } from '../src/treemanager/BinaryBTreeManager';
+import { Identifier } from '../src/Identifier';
+const ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
 
-// import fs = require("fs")
-// import { Normalizer } from '../src/CustomWordNormalizer';
-
-// let normalize = new Normalizer().normalize
-
-// let sourceDirectory = "tests/testdata/"
-// let sourceFile = "tests/straatnamen20k.txt"
-// let binaryTreeStringDataLocation = "binary_streets/"
-// let binaryTreeStringLocation = "binary_collections/"
-// let binaryTreeStringFile = "binary_streetnames" 
-// let maxFragmentSize = 100
-// let maxCachedFragments = 10000
-// // Read input file
+import fs = require("fs")
+let sourceDirectory = "tests/testdata/"
+let sourceFile = "tests/straatnamen20k.txt"
+let binaryTreeStringDataLocation = "binary_streets/"
+let binaryTreeStringLocation = "binary_collections/"
+let binaryTreeStringFile = "binary_streetnames" 
+let maxFragmentSize = 6 // 100
+let maxCachedFragments = 10000
+// Read input file
 
 
 
 
-// describe('Binary Tree String tests', () => {
-//   let readLines = fs.readFileSync(sourceFile).toString().split("\n")
+describe('Binary Tree String tests', () => {
+  let readLines = fs.readFileSync(sourceFile).toString().split("\n")
+  let representations : any[] = []
 
-//   var treeManager = new BinaryBTreeManager()
+  var treeManager = new BinaryBTreeManager()
   
   
-//   let tree = treeManager.createTree(sourceDirectory, 
-//     binaryTreeStringDataLocation, 
-//     binaryTreeStringLocation, 
-//     binaryTreeStringFile, 
-//     "oslo:StraatNaam",  // manages
-//     "oslo:StraatNaam",  // shacl:path
-//     "oslo:label",  // shacl:path
-//     maxCachedFragments, 
-//     maxFragmentSize)
+  let tree = treeManager.createTree(sourceDirectory, 
+    binaryTreeStringDataLocation, 
+    binaryTreeStringLocation, 
+    binaryTreeStringFile, 
+    "oslo:StraatNaam",  // manages
+    "oslo:StraatNaam",  // shacl:path
+    "oslo:label",  // shacl:path
+    maxCachedFragments, 
+    maxFragmentSize)
 
-//   it('creating new Tree object', () => {
-//     expect(tree.getTreeObject().node_count).to.equal(0);
-//   });
+  it('creating new Tree object', () => {
+    expect(tree.getTreeObject().node_count).to.equal(0);
+  });
 
-//   let count = 0
-//   it('Adding a single item to tree', () => {
-//     let long = 10//(Math.random() * 2) + 2;
-//     let lat = 20//(Math.random() * 3) + 50;
-//     let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-//         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-//         @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-//         <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
+  let count = 0
+  it('Adding a single item to tree', () => {
+    let long = 10//(Math.random() * 2) + 2;
+    let lat = 20//(Math.random() * 3) + 50;
+    let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
+        @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
+        <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
 
-//     tree.addData("Teststraat", dataObject)
-//     expect(tree.getTreeObject().node_count).to.equal(1);
-//     expect(tree.getTreeObject().get_root_node().value).to.equal(normalize("Teststraat"));
-//   });
+    tree.addData("Teststraat", dataObject)
+    expect(tree.getTreeObject().node_count).to.equal(1);
+  });
 
     
-//   it('adding street names to tree', () => {
-//     for (let line of readLines) {
-//       // Create new Triple object to add to the given tree, containing a representation and an object.
-//       let long = (Math.random() * 2) + 2;
-//       let lat = (Math.random() * 3) + 50;
+  it('adding street names to tree', () => {
+    for (let line of readLines) {
+      // Create new Triple object to add to the given tree, containing a representation and an object.
+      let long = (Math.random() * 2) + 2;
+      let lat = (Math.random() * 3) + 50;
 
-//       let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-//           @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-//           @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-//           <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
+      let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
+          @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
+          @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
+          <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "'+line+'"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
 
-//       // Add the member to the tree.
-//       tree.addData(line, dataObject)
-
-//     }
-//   })
-
-
+      // Add the member to the tree.
+      let node = tree.addData(line, dataObject)
+      if (node !== null && node !== undefined){
+        representations.push(line)
+      }
+    }
+  })
   
+  it ('writing tree object', () => {
+    tree.doneAdding()
+    
+  })
+
+  let newtree : TreeRepresentation | null = null;
+  it('checking all items to be in the tree', () => {
+  
+    newtree = treeManager.readTree(sourceDirectory, 
+      binaryTreeStringDataLocation, 
+      binaryTreeStringLocation, 
+      binaryTreeStringFile, 
+      "oslo:StraatNaam",  // manages
+      "oslo:StraatNaam",  // shacl:path
+      "oslo:label",  // shacl:path
+      maxCachedFragments, 
+      maxFragmentSize);
+
+      for (let rep of representations) {
+        let foundreps = newtree.searchData(rep);
+        console.log("foundreps", foundreps)
+        if (foundreps === null) { expect(false) } else {
+          let found = false
+          for (let i = 0; i < foundreps.length; i++){
+            if (foundreps[i].get_representation() === rep) {
+              found = true;
+            }
+          }
+          expect(found).equals(true)
+        }
+      }
+  })
+
+
+  it('checking total children count in each node to be the sum of the child items ', () => {
+    if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
+    let rootNode = newtree.getTreeObject().get_root_node()
+
+    // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
+    checkItems(rootNode)
+
+  })
+
+
+  function checkItems(currentNode : Node){
+    let totalItems = 0
+      for ( let child of currentNode.get_children_objects() ){
+        checkItems(child)
+        totalItems += child.get_total_children_count() + 1;
+      }
+      let childRelationArray = currentNode.children;
+      for (let relation of childRelationArray){
+        expect(relation).not.null
+        expect(relation.identifier).not.null
+        expect(relation.type).not.null
+      }
+      expect(totalItems).to.equal(currentNode.get_total_children_count());
+  }
+
+})
+
+
+
+
+
 //   it('checking total children count in each node to be the sum of the child items ', () => {
-//     let rootNode = tree.getTreeObject().get_root_node()
+//     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
+//     let rootNode = newtree.getTreeObject().get_root_node()
 
 //     // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
 //     checkItems(rootNode)
-//   })
 
-//   it ('writing tree object', () => {
-//     tree.doneAdding()
-    
-//   })
-
-//   let newtree : TreeRepresentation | null = null;
-//   it('checking all items to be in the tree', () => {
-  
-//     newtree = treeManager.readTree(sourceDirectory, 
-//       binaryTreeStringDataLocation, 
-//       binaryTreeStringLocation, 
-//       binaryTreeStringFile, 
-//       "oslo:StraatNaam",  // manages
-//       "oslo:StraatNaam",  // shacl:path
-//       "oslo:label",  // shacl:path
-//       maxCachedFragments, 
-//       maxFragmentSize);
 //   })
 
 //   it('checking all items have been added to the tree', () => {
@@ -111,17 +155,13 @@
 //       expect(false)
 //       return;
 //     }
-//     for (let line of readLines) {
-//       // Create new Triple object to add to the given tree, containing a representation and an object
-//       // Add the member to the tree.
-//       let search = newtree.searchData(line)
-//       if (search === null) { expect(false)} 
-//       else { expect(normalize(search[0].get_representation())).to.equal(normalize(line)) }
+//     for (let line of readLines) { 
+//       let representations = newtree.searchData(line)
+//       if (representations === null) { console.error("null prepresentations"); expect(false) } else {
+
+//         expect( representations.map(e => e.get_representation()).indexOf(line) ).to.not.equal( -1 ) }
 //     }
 //   })
-
-
-  
 
 // });
 
@@ -133,53 +173,15 @@
 //       checkItems(child)
 //       totalItems += child.get_total_children_count() + 1;
 //     }
-
-//     expect(currentNode.value).to.equal(currentNode.get_identifier().value);
-    
-//     let childrenIdentifierArrays = currentNode.children.values();
-//     let next = childrenIdentifierArrays.next();
-//     while (! next.done){
-
-//       if (next.value === null || next === undefined){
-//         expect(false)
-//       } else {
-//         next.value.forEach((childIdentifier : Identifier) => {
-//           expect(childIdentifier.value).not.null
-//         });
-//       }
-//       next = childrenIdentifierArrays.next();
+//     let childRelationArray = currentNode.children;
+//     for (let relation of childRelationArray){
+//       expect(relation).not.null
+//       expect(relation.identifier).not.null
+//       expect(relation.type).not.null
+//       expect(relation.value).not.null
 //     }
 //     expect(totalItems).to.equal(currentNode.get_total_children_count());
 // }
 
-// function printTree(rootNode : Node){
-//   console.log("################Tree Start################")
-//   printNode(rootNode)
-//   console.log("################Tree End################")
-// }
-// function printNode(node : Node){
-//   if (node.has_parent_node()){
-//     console.log(node.get_value(), node.get_node_id(), node.get_parent_node().get_value(), printNodeChildren(node))
-//   } else {
-//     console.log(node.get_value(), node.get_node_id(), null, printNodeChildren(node))
-//   }
 
-//   for (let child of node.get_children_objects()){
-//     printNode(child)
-//   }
 
-// }
-
-// function printNodeChildren(node : Node){
-//   let nodeVals = node.children.values()
-//   let next = nodeVals.next()
-//   let childrenString = "";
-//   while(! next.done){
-//     next.value.forEach(element => {
-//         childrenString += element.nodeId + "-" + element.value + "   "
-//     });
-//     next = nodeVals.next()
-//   }
-
-//   return childrenString
-// }

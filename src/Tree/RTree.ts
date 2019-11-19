@@ -8,8 +8,6 @@ import { Identifier } from '../Identifier';
 
 export class RTree extends Tree{
 
-  maxChildrenSize = 10;
-
   addData(representation: any, member: Member): Node | null {
     if(this.node_count === 0) {
       return this.createFirstNode(representation, member)
@@ -290,7 +288,7 @@ export class RTree extends Tree{
     }
 
     let parentChildren = parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
-    if (parentChildren != null && parentChildren.length >= this.maxChildrenSize) {
+    if (parentChildren != null && parentChildren.length >= this.max_fragment_size) {
       this.splitNode(parent, null);
     } 
 

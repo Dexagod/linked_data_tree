@@ -55,8 +55,26 @@ export class Node {
     // Add a child node to this node and propagate the new information.
     add_child(childRelation: ChildRelation, node: Node, value : any) {
         this.add_child_no_propagation(childRelation, node, value);
-        this.propagate_children_count(node.get_total_children_count() + 1)
+        let childrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId});
+        if ( childrenIdentifiers.indexOf(node.get_node_id()) === -1 ){
+            this.propagate_children_count(node.get_total_children_count() + 1)
+        }
     }
+
+    
+    add_child_with_relation(relation : Relation, node: Node) {
+        this.add_child_no_propagation_with_relation(relation, node);
+        let childrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId});
+        if ( childrenIdentifiers.indexOf(node.get_node_id()) === -1 ){
+            this.propagate_children_count(node.get_total_children_count() + 1)
+        }
+    }
+    
+    add_child_no_propagation_with_relation(relation: Relation, childNode : Node) {
+        this.children.push(relation);
+        childNode.set_parent_node(this);
+    }
+
 
     // Return the total amount of children under this node.
     get_total_children_count() {
@@ -64,35 +82,68 @@ export class Node {
     }
 
     set_total_children_count(count: number) {
-        this.total_children_count = count;
+      this.total_children_count = count;
     }
 
     has_child_relations() : boolean {
-        return this.children.length > 0;
+      return this.children.length > 0;
     }
 
     propagate_children_count(increment: number) {
-        this.total_children_count += increment;
-        if (this.has_parent_node()) {
-            this.get_parent_node().propagate_children_count(increment)
-        }
+      this.total_children_count += increment;
+      if (this.has_parent_node()) {
+        this.get_parent_node().propagate_children_count(increment)
+      }
+    }
+
+    getRelations() : Array<Relation> {
+      return this.children;
     }
 
     // Removes a child node from this node
     remove_child(node: Node) {
-        let newRelations = new Array<Relation>();
-        for (let relation of this.children){
-            if (! relation.identifier.equals(node.get_identifier())){
-                newRelations.push(relation)
-            }
+      let newRelations = new Array<Relation>();
+      for (let relation of this.children){
+        if (! relation.identifier.equals(node.get_identifier())){
+          newRelations.push(relation)
         }
-        this.children = newRelations;
+      }
+      this.children = newRelations;
     }
 
     swapChildren(oldChild : Node, relations : Array<ChildRelation>, newChildren : Array<Node>, values : Array<any>){
+      let newChildrenCount = 0
+      for (let child of newChildren){
+        newChildrenCount += child.get_total_children_count() + 1
+      }
+
+      let oldChildrenCount = oldChild.get_total_children_count() + 1
+      let childCountDifference = newChildrenCount - oldChildrenCount
+      this.remove_child(oldChild);
+      
+      for (let i = 0; i < newChildren.length; i++){
+        let childRelation = relations[i]
+        let childNode = newChildren[i]
+        let relationValue = values[i]
+        this.add_child_no_propagation(childRelation, childNode, relationValue);
+      }
+      this.propagate_children_count(childCountDifference);
+
+    }
+
+    
+    swapChildrenWithRelation(oldChild : Node, relations : Array<Relation>, newChildren : Array<Node>){
         let newChildrenCount = 0
+        let countedChildren = new Array()
+
+        let currentChildrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId})
         for (let child of newChildren){
-            newChildrenCount += child.get_total_children_count() + 1
+            
+            if (countedChildren.indexOf(child.get_node_id()) === -1 || 
+            currentChildrenIdentifiers.indexOf(child.get_node_id()) === -1 ){
+                newChildrenCount += child.get_total_children_count() + 1
+                countedChildren.push(child.get_node_id())
+            }
         }
 
         let oldChildrenCount = oldChild.get_total_children_count() + 1
@@ -100,10 +151,9 @@ export class Node {
         this.remove_child(oldChild);
         
         for (let i = 0; i < newChildren.length; i++){
-            let childRelation = relations[i]
+            let relation = relations[i]
             let childNode = newChildren[i]
-            let relationValue = values[i]
-            this.add_child_no_propagation(childRelation, childNode, relationValue);
+            this.add_child_no_propagation_with_relation(relation, childNode)
         }
         this.propagate_children_count(childCountDifference);
 
@@ -132,9 +182,9 @@ export class Node {
 
 
     get_children_with_relation(childRelation: ChildRelation): Array<Node> | null {
-        let identifierList = this.get_children_identifiers_with_relation(childRelation);
-        if (identifierList === null) {return null;}
-        return identifierList.map((identifier : Identifier) => this.fc.get_node(identifier))
+      let identifierList = this.get_children_identifiers_with_relation(childRelation);
+      if (identifierList === null) {return null;}
+      return identifierList.map((identifier : Identifier) => this.fc.get_node(identifier))
     }
 
     // Updates the child node.

@@ -10,7 +10,7 @@ export class BinaryBTreeRepresentation extends TreeRepresentation{
   }
 
   addData(representation: any, data: any, dataRepresentation : any = representation) {
-    representation = this.customNormalizer(representation)
+    // representation = this.customNormalizer(representation)
     this.tree.addData(representation, new Member(dataRepresentation, data))
   }
 }
