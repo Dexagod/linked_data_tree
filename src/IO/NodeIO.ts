@@ -15,14 +15,11 @@ var context = {
   "hydra": "http://www.w3.org/ns/hydra/core#",
   "schema": "http://schema.org//",
   "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-  "representation": "https://example.org/Triple#Representation",
-  "contents": "hydra: collection",
   "value": "tree:value",
   "members": "hydra:member",
-  "children": "tree:hasChildRelation",
+  "children": "tree:relation",
   "suggestions": "hydra:member",
-  "score": "hydra:value",
-  "childcount" : "hydra:totalItems",
+  "childcount" : "tree:remainingItems",
   "geo" : "http://www.w3.org/2003/01/geo/wgs84_pos#",
   "shacl" : "http://www.w3.org/ns/shacl#"
 }
