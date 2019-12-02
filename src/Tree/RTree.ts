@@ -393,15 +393,15 @@ export class RTree extends Tree{
     if (smallestXaxisBBox[0] < largestXaxisBBox[0]){
       if (smallestXaxisBBox[2] < largestXaxisBBox[0]){
         // no overlap on X axis
-        Xdistance = Math.abs(largestXaxisBBox[0] - smallestXaxisBBox[2]) / containerXsize
+        Xdistance = Math.abs(largestXaxisBBox[0] - smallestXaxisBBox[2]) // / containerXsize
         Xoverlap = false;
       } else if (smallestXaxisBBox[2] < largestXaxisBBox[2]){
         // Both bboxes overlap on X axis
-        Xdistance = Math.abs(smallestXaxisBBox[2] - largestXaxisBBox[0]) / containerXsize
+        Xdistance = Math.abs(smallestXaxisBBox[2] - largestXaxisBBox[0]) // / containerXsize
         Xoverlap = true;
       } else if (smallestXaxisBBox[2] < largestXaxisBBox[0]){
         // full overlap (node 2 in node 1 on X axis)
-        Xdistance = Math.abs(largestXaxisBBox[2] - largestXaxisBBox[0]) / containerXsize
+        Xdistance = Math.abs(largestXaxisBBox[2] - largestXaxisBBox[0]) // / containerXsize
         Xoverlap = true;
       } 
     }
@@ -412,15 +412,15 @@ export class RTree extends Tree{
     if (smallestYaxisBBox[1] < largestYaxisBBox[1]){
       if (smallestYaxisBBox[3] < largestYaxisBBox[1]){
         // no overlap on Y axis
-        Ydistance = Math.abs(largestYaxisBBox[1] - smallestYaxisBBox[3]) / containerYsize
+        Ydistance = Math.abs(largestYaxisBBox[1] - smallestYaxisBBox[3]) // / containerYsize
         Yoverlap = false;
       } else if (smallestYaxisBBox[3] < largestYaxisBBox[3]){
         // Both bboxes overlap on Y axis
-        Ydistance = Math.abs(smallestYaxisBBox[3] - largestYaxisBBox[1]) / containerYsize
+        Ydistance = Math.abs(smallestYaxisBBox[3] - largestYaxisBBox[1]) // / containerYsize
         Yoverlap = true;
       } else if (smallestYaxisBBox[3] < largestYaxisBBox[1]){
         // full overlap (node 2 in node 1 on Y axis)
-        Ydistance = Math.abs(largestYaxisBBox[3] - largestYaxisBBox[1]) / containerYsize
+        Ydistance = Math.abs(largestYaxisBBox[3] - largestYaxisBBox[1]) // / containerYsize
         Yoverlap = true;
       } 
     }

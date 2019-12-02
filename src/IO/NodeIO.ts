@@ -120,7 +120,7 @@ export class NodeIO{
     return {
       "@context": context,
       "@id": this.getCollectionId(),
-      "@type" : "hydra:collection",
+      "@type" : "hydra:Collection",
       "hydra:totalItems" : totalItems,
       "hydra:view" : encodedNode,
       "hydra:member" : encodedMembers,
