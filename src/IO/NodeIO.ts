@@ -45,7 +45,7 @@ export class NodeIO{
     }
   }
 
-  delete_node(nodeId: number){
+  delete_node(nodeId: string){
     if (nodeId === null || nodeId === undefined) {  return};
     let location = this.getNodeLocation(nodeId)
     if (fs.existsSync(location)){
@@ -63,7 +63,7 @@ export class NodeIO{
     fs.writeFileSync(location, JSONSTRING, {encoding: 'utf-8'})    
   }
 
-  read_node(nodeId: number, fc: Cache) {
+  read_node(nodeId: string, fc: Cache) {
     let location = this.getNodeLocation(nodeId)
     let input_string = fs.readFileSync(location, {encoding: 'utf-8'})
     let wrapper = JSON.parse(input_string);
@@ -90,7 +90,7 @@ export class NodeIO{
   }
 
   readTree(prototypeObject : any) {
-    let nodeId = 0;
+    let nodeId = this.dataFolder + "node0.jsonld";
     let location = this.getNodeLocation(nodeId)
     let input_string = fs.readFileSync(location, {encoding: 'utf-8'})
     let wrapper = JSON.parse(input_string);
@@ -243,24 +243,25 @@ export class NodeIO{
   }
 
   private getCollectionId(){
-    return this.getNodeIdFromIdentifier(0) + "#collection"
+    return this.getRootNodeIdentifier() + "#Collection"
   }
 
-  getNodeLocation(nodeId: number){
-    return nodeId
+  getNodeLocation(nodeId: string){
+    return this.sourceDirectory + nodeId
     // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }
   
-  getNodeIdFromIdentifier(nodeId: number){
-    return "/" + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
+  getNodeIdFromIdentifier(nodeId: string){
+    return nodeId
+    // return "/" + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }
   
   retrieveNodeIdentifier(str: string, value: any): Identifier{
     // let nodeId = str.replace(this.sourceDirectory + this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
-    let nodeId = str.replace(this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
+    let nodeId = str //str.replace(this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
     if (nodeId === null) { throw new Error("requesting node with null id") }
-    else { return new Identifier(parseInt(nodeId), value); }
+    else { return new Identifier(nodeId, value); }
   }
 
   relationToString(relation: ChildRelation): string { return "tree:" + relation}
@@ -282,6 +283,10 @@ export class NodeIO{
   }
   decode_tdo_value(a : any){
     return a;
+  }
+
+  getRootNodeIdentifier(){
+    return this.dataFolder + "node0.jsonld";
   }
 }
 

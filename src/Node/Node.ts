@@ -181,10 +181,10 @@ export class Node {
 
     // Returns the objects of all children for iteration purposes.
     get_children_objects(): Array<Node> {
-        let nodeIds = new Set <number> ()
+        let nodeIds = new Set <string> ()
         this.children.map((relation : Relation) => { nodeIds.add(relation.identifier.nodeId)});
 
-       return Array.from(nodeIds).map( (id : number) => this.fc.get_node_by_id(id))
+       return Array.from(nodeIds).map( (id : string) => this.fc.get_node_by_id(id))
         
     }
 

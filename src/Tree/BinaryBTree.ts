@@ -282,7 +282,7 @@ export class BinaryBTree extends Tree {
     let oldNodeLTERelation = null;
     let oldNodeGTRelation = null;
 
-    let newRelations = new Array();&
+    let newRelations = new Array();
 
     if (splitValue === null || splitValue === undefined){
       throw new Error("Null value split on node swap.")

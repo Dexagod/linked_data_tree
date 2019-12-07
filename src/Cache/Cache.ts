@@ -5,9 +5,9 @@ import { Identifier } from "../Identifier";
 import { Tree } from '../Tree/Tree';
 
 export class Cache {
-    cache: Map<number, Node>;
+    cache: Map<string, Node>;
     last_used_cache_counter: number;
-    cache_hits: Map<number, number>;
+    cache_hits: Map<string, number>;
     nodeLocationFolder: string;
     max_cache_size: number;
     sourceDirectory: string;
@@ -71,7 +71,7 @@ export class Cache {
         return this.last_used_cache_counter;
     }
 
-    get_node_by_id(nodeId: number) : Node {
+    get_node_by_id(nodeId: string) : Node {
         if (this.cache.has(nodeId)) {
             this.cache_hits.set(nodeId, this.assign_cache_counter());
             return this.getNodeFromCache(nodeId);
@@ -88,7 +88,7 @@ export class Cache {
     list_nodes(): Array <Node> {
         let fc = this;
         var values = Object.keys(this.cache).map(function (key): Node {
-            return fc.getNodeFromCache(parseInt(key));
+            return fc.getNodeFromCache(key);
         });
         return values;
     }
@@ -98,17 +98,17 @@ export class Cache {
         this.cache_hits.delete(node.get_node_id());
     }
 
-    delete_node_file_by_id(nodeId: number) : void {
+    delete_node_file_by_id(nodeId: string) : void {
         this.nodeIO.delete_node(nodeId);
     }
 
-    import_node(nodeId: number) : Node{
+    import_node(nodeId: string) : Node{
         let node = this.read_node_from_file(nodeId);
         this.add_node(node);
         return node;
     }
 
-    read_node_from_file(nodeId: number) : Node{
+    read_node_from_file(nodeId: string) : Node{
         this.reads += 1;
         let result = this.nodeIO.read_node(nodeId, this);
         return result;
@@ -120,7 +120,7 @@ export class Cache {
         return this.nodeIO.write_node(node)
     }
 
-    write_node_batch_to_file(index_array: Array<number>) : void{
+    write_node_batch_to_file(index_array: Array<string>) : void{
         this.writes += index_array.length;
 
         const mapped_array: Array<Node> = index_array.map(e => this.getNodeFromCache(e))
@@ -138,9 +138,9 @@ export class Cache {
         console.log("CLEANING CACHE")
         this.cache_cleans += 1;
 
-        let cache_values: Array<Array<number>> = new Array()
+        let cache_values: Array<Array<any>> = new Array()
 
-        for (var key in this.cache) cache_values.push([parseInt(key), this.getCacheHits(parseInt(key))])
+        for (var key in this.cache) cache_values.push([key, this.getCacheHits(key)])
 
         cache_values.sort(function (a, b) {
             let x = a[1];
@@ -156,23 +156,28 @@ export class Cache {
     }
 
     flush_cache(tree : Tree) {
+        let rootNodeIdentifier = tree.get_root_node_identifier()
         let keyArray = Array.from(this.cache.keys())
-        keyArray.splice(keyArray.indexOf(0), 1) // remove rootNode from keys
-        let rootNode = this.cache.get(0)
+        if (rootNodeIdentifier != null){
+            keyArray.splice(keyArray.indexOf(rootNodeIdentifier.nodeId), 1) // remove rootNode from keys
+        }
+        let rootNode = tree.get_root_node()
         this.write_node_batch_to_file(keyArray)
-        this.cache.delete(0)
+        if (rootNodeIdentifier != null){
+            this.cache.delete(rootNodeIdentifier.nodeId)  
+        }
 
         if (rootNode === undefined) { throw new Error("Cannot write rootnode to file since rootnode is undefined.")}
         return this.nodeIO.writeTreeRoot(rootNode, tree)
     }
 
-    getNodeFromCache(nodeId: number): Node{
+    getNodeFromCache(nodeId: string): Node{
       let node = this.cache.get(nodeId);
       if (node === undefined || node === null) throw new Error("Requested id is not in the node cache or is null")
       return node;
     }
     
-    getCacheHits(nodeId: number): number{
+    getCacheHits(nodeId: string): number{
       let hits = this.cache_hits.get(nodeId);
       if (hits === undefined || hits === null) throw new Error("Requested cache hits are not present in the cache or is null for requested id")
       return hits;

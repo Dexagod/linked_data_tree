@@ -38,7 +38,7 @@ export abstract class Tree {
      * @param {Node} node 
      */
     provide_node_id(): string {
-        let id = this.sourceDirectory + this.dataFolder + "node" + this.node_count.toString() + ".jsonld"
+        let id = this.cache.dataFolder + "node" + this.node_count.toString() + ".jsonld"
         this.node_count ++
         return id
         // return this.node_count++;
