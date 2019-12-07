@@ -1,8 +1,8 @@
 export class Identifier{
-  nodeId : number;
+  nodeId : string;
   value : any
 
-  constructor(nodeId : number, value : any){
+  constructor(nodeId : string, value : any){
     this.nodeId = nodeId;
     this.value = value
   }

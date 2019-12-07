@@ -13,7 +13,6 @@ export class RTreeRepresentation extends TreeRepresentation{
   addData(representation: any, data: any, dataRepresentation = representation) {
     representation = terraformer_parser.parse(representation)
     dataRepresentation = terraformer_parser.parse(dataRepresentation)
-    representation = this.customNormalizer(representation)
     let newmember = new Member(dataRepresentation, data)
     this.tree.addData(representation, newmember)
   }

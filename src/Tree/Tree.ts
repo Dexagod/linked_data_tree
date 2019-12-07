@@ -17,7 +17,6 @@ export abstract class Tree {
      * @param {number} max_fragment_size 
      * @param {Cache} cache 
      * @param {TreeBalancer} balancer 
-     * @param {any} tree_manages 
      */
     constructor(max_fragment_size: number, cache: Cache) {
         this.max_fragment_size = max_fragment_size;
@@ -38,8 +37,11 @@ export abstract class Tree {
      * Node argument is unused, kept in case of needed refactor of this method.
      * @param {Node} node 
      */
-    provide_node_id(): number {
-        return this.node_count++;
+    provide_node_id(): string {
+        let id = this.sourceDirectory + this.dataFolder + "node" + this.node_count.toString() + ".jsonld"
+        this.node_count ++
+        return id
+        // return this.node_count++;
     }
 
     /** 

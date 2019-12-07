@@ -1,5 +1,6 @@
 export enum ChildRelation{
-    StringCompletesRelation="StringCompletesRelation",
+    PrefixRelation = "PrefixRelation",
+    SubstringRelation = "SubstringRelation",
     GreaterThanRelation="GreaterThanRelation",
     GreaterOrEqualThanRelation="GreaterOrEqualThanRelation",
     LesserThanRelation="LesserThanRelation",

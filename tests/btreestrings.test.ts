@@ -31,10 +31,6 @@ describe('Binary Tree String tests', () => {
   
   let tree = treeManager.createTree(sourceDirectory, 
     binaryTreeStringDataLocation, 
-    binaryTreeStringLocation, 
-    binaryTreeStringFile, 
-    "oslo:StraatNaam",  // manages
-    "oslo:StraatNaam",  // shacl:path
     "oslo:label",  // shacl:path
     maxCachedFragments, 
     maxFragmentSize)
@@ -86,17 +82,13 @@ describe('Binary Tree String tests', () => {
   
     newtree = treeManager.readTree(sourceDirectory, 
       binaryTreeStringDataLocation, 
-      binaryTreeStringLocation, 
-      binaryTreeStringFile, 
-      "oslo:StraatNaam",  // manages
-      "oslo:StraatNaam",  // shacl:path
       "oslo:label",  // shacl:path
       maxCachedFragments, 
       maxFragmentSize);
 
       for (let rep of representations) {
         let foundreps = newtree.searchData(rep);
-        console.log("foundreps", foundreps)
+        // console.log("foundreps", foundreps)
         if (foundreps === null) { expect(false) } else {
           let found = false
           for (let i = 0; i < foundreps.length; i++){
@@ -120,22 +112,46 @@ describe('Binary Tree String tests', () => {
   })
 
 
+});
+
+
   function checkItems(currentNode : Node){
     let totalItems = 0
-      for ( let child of currentNode.get_children_objects() ){
-        checkItems(child)
-        totalItems += child.get_total_children_count() + 1;
-      }
-      let childRelationArray = currentNode.children;
-      for (let relation of childRelationArray){
-        expect(relation).not.null
-        expect(relation.identifier).not.null
-        expect(relation.type).not.null
-      }
-      expect(totalItems).to.equal(currentNode.get_total_children_count());
-  }
+    for ( let child of currentNode.get_children_objects() ){
+      totalItems += child.get_remainingItems();
+      checkItems(child)
+    }
+    totalItems += currentNode.get_members().length
 
-})
+    let childRelationArray = currentNode.children;
+    for (let relation of childRelationArray){
+      expect(relation).not.null
+      expect(relation.identifier).not.null
+      expect(relation.type).not.null
+      expect(relation.value).not.null
+    }
+    
+    expect(totalItems).to.equal(currentNode.get_remainingItems());
+  }
+  
+
+
+//   function checkItems(currentNode : Node){
+//     let totalItems = 0
+//       for ( let child of currentNode.get_children_objects() ){
+//         checkItems(child)
+//         totalItems += child.get_remainingItems() + 1;
+//       }
+//       let childRelationArray = currentNode.children;
+//       for (let relation of childRelationArray){
+//         expect(relation).not.null
+//         expect(relation.identifier).not.null
+//         expect(relation.type).not.null
+//       }
+//       expect(totalItems).to.equal(currentNode.get_remainingItems());
+//   }
+
+// })
 
 
 
@@ -171,7 +187,7 @@ describe('Binary Tree String tests', () => {
 //   let totalItems = 0
 //     for ( let child of currentNode.get_children_objects() ){
 //       checkItems(child)
-//       totalItems += child.get_total_children_count() + 1;
+//       totalItems += child.get_remainingItems() + 1;
 //     }
 //     let childRelationArray = currentNode.children;
 //     for (let relation of childRelationArray){
@@ -180,8 +196,5 @@ describe('Binary Tree String tests', () => {
 //       expect(relation.type).not.null
 //       expect(relation.value).not.null
 //     }
-//     expect(totalItems).to.equal(currentNode.get_total_children_count());
+//     expect(totalItems).to.equal(currentNode.get_remainingItems());
 // }
-
-
-

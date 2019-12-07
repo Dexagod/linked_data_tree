@@ -13,7 +13,7 @@ export class Node {
     
     parent_node:  Identifier| null;
     fc: Cache;
-    total_children_count: number;
+    remainingItems: number;
 
 
     constructor(value: any, parent_node: Node | null, tree: Tree) {
@@ -27,7 +27,7 @@ export class Node {
         } else {
             this.parent_node = null;
         }
-        this.total_children_count = 0;
+        this.remainingItems = 0;
         tree.addNode(this)
     }
 
@@ -35,7 +35,7 @@ export class Node {
         return this.identifier;
     }
 
-    get_node_id(): number{
+    get_node_id(): string{
         return this.identifier.nodeId;
     }
 
@@ -54,35 +54,51 @@ export class Node {
 
     // Add a child node to this node and propagate the new information.
     add_child(childRelation: ChildRelation, node: Node, value : any) {
+        this.calculate_propagation(node)
         this.add_child_no_propagation(childRelation, node, value);
-        let childrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId});
-        if ( childrenIdentifiers.indexOf(node.get_node_id()) === -1 ){
-            this.propagate_children_count(node.get_total_children_count() + 1)
-        }
     }
 
     
     add_child_with_relation(relation : Relation, node: Node) {
+        this.calculate_propagation(node)
         this.add_child_no_propagation_with_relation(relation, node);
-        let childrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId});
-        if ( childrenIdentifiers.indexOf(node.get_node_id()) === -1 ){
-            this.propagate_children_count(node.get_total_children_count() + 1)
-        }
+        
     }
     
     add_child_no_propagation_with_relation(relation: Relation, childNode : Node) {
         this.children.push(relation);
         childNode.set_parent_node(this);
     }
+    
 
-
-    // Return the total amount of children under this node.
-    get_total_children_count() {
-        return this.total_children_count;
+    calculate_propagation(node : Node){
+        let found = false
+        for (let relation of this.children){
+            if (relation.identifier.nodeId === node.get_node_id()){
+                found = true
+            }
+        }
+        if (! found){
+            this.set_remainingItems(this.get_remainingItems() + node.get_remainingItems())
+        }
     }
 
-    set_total_children_count(count: number) {
-      this.total_children_count = count;
+    // Return the total amount of children under this node.
+    get_remainingItems() {
+        return this.remainingItems;
+    }
+
+    set_remainingItems(count: number) {
+      this.remainingItems = count;
+    }
+
+    fix_total_member_count(){
+        let newcount = 0
+        for(let childNode of this.get_children_objects()){
+            newcount += childNode.get_remainingItems()
+        }
+        newcount += this.get_members().length
+        this.set_remainingItems(newcount)
     }
 
     has_child_relations() : boolean {
@@ -90,7 +106,7 @@ export class Node {
     }
 
     propagate_children_count(increment: number) {
-      this.total_children_count += increment;
+      this.remainingItems += increment;
       if (this.has_parent_node()) {
         this.get_parent_node().propagate_children_count(increment)
       }
@@ -111,59 +127,25 @@ export class Node {
       this.children = newRelations;
     }
 
-    swapChildren(oldChild : Node, relations : Array<ChildRelation>, newChildren : Array<Node>, values : Array<any>){
-      let newChildrenCount = 0
-      for (let child of newChildren){
-        newChildrenCount += child.get_total_children_count() + 1
-      }
-
-      let oldChildrenCount = oldChild.get_total_children_count() + 1
-      let childCountDifference = newChildrenCount - oldChildrenCount
+    swapChildren(oldChild : Node, relations : Array<ChildRelation>, newChildren : Array<Node>, values : Array<any>){ 
       this.remove_child(oldChild);
-      
       for (let i = 0; i < newChildren.length; i++){
-        let childRelation = relations[i]
-        let childNode = newChildren[i]
-        let relationValue = values[i]
-        this.add_child_no_propagation(childRelation, childNode, relationValue);
+        this.add_child_no_propagation(relations[i], newChildren[i], values[i]);
       }
-      this.propagate_children_count(childCountDifference);
-
     }
-
     
     swapChildrenWithRelation(oldChild : Node, relations : Array<Relation>, newChildren : Array<Node>){
-        let newChildrenCount = 0
-        let countedChildren = new Array()
-
-        let currentChildrenIdentifiers : Array<any> = this.children.map((relation : Relation) => {relation.identifier.nodeId})
-        for (let child of newChildren){
-            
-            if (countedChildren.indexOf(child.get_node_id()) === -1 || 
-            currentChildrenIdentifiers.indexOf(child.get_node_id()) === -1 ){
-                newChildrenCount += child.get_total_children_count() + 1
-                countedChildren.push(child.get_node_id())
-            }
-        }
-
-        let oldChildrenCount = oldChild.get_total_children_count() + 1
-        let childCountDifference = newChildrenCount - oldChildrenCount
         this.remove_child(oldChild);
-        
         for (let i = 0; i < newChildren.length; i++){
-            let relation = relations[i]
-            let childNode = newChildren[i]
-            this.add_child_no_propagation_with_relation(relation, childNode)
+            this.add_child_no_propagation_with_relation(relations[i], newChildren[i])
         }
-        this.propagate_children_count(childCountDifference);
-
     }
 
     clear(){
         this.members = new Array();
         this.children = new Array();
         this.parent_node = null;
-        this.total_children_count = 0;
+        this.remainingItems = 0;
     }
     
     clearChildren(){
@@ -199,7 +181,11 @@ export class Node {
 
     // Returns the objects of all children for iteration purposes.
     get_children_objects(): Array<Node> {
-        return this.children.map((relation : Relation) => this.fc.get_node(relation.identifier))
+        let nodeIds = new Set <number> ()
+        this.children.map((relation : Relation) => { nodeIds.add(relation.identifier.nodeId)});
+
+       return Array.from(nodeIds).map( (id : number) => this.fc.get_node_by_id(id))
+        
     }
 
     get_child_by_value(value : any) : Node | null{
@@ -289,6 +275,7 @@ export class Node {
     add_data(member: Member) {
         if (member.contents === null){ return }
         this.members.push(member);
+        this.propagate_children_count(1)
     }
     
     /**
@@ -298,7 +285,7 @@ export class Node {
     copy_info(othernode: Node) {
         this.set_children(othernode.get_children())
         this.set_members(othernode.get_members())
-        this.set_total_children_count(othernode.get_total_children_count())
+        this.set_remainingItems(othernode.get_remainingItems())
     }
 
     get_only_child_with_relation(childRelation : ChildRelation) : Node | null {

@@ -5,7 +5,6 @@ import { ChildRelation } from '../Relations/ChildRelation';
 import { Identifier } from '../Identifier';
 import { Relation } from '../Relation';
 import { Interval } from '../Interval';
-import { cpus } from 'os';
 
 
 export class BinaryBTree extends Tree {
@@ -49,12 +48,15 @@ export class BinaryBTree extends Tree {
       throw new Error("There is a gap between the nodes where a value fell through.")
     }
 
-    currentNode.add_data(member)
 
-    if (currentNode.get_members().length > this.max_fragment_size){
-      return this.splitLeafNode(currentNode, interval, value)
+    if (member !== null) {
+      currentNode.add_data(member)
+      if (currentNode.get_members().length > this.max_fragment_size){
+        return this.splitLeafNode(currentNode, interval, value)
+      }
     }
     return currentNode;
+  
   }
 
   private getIntervals(relationList: Array<Relation>) : Map<any, Interval>{
@@ -73,10 +75,10 @@ export class BinaryBTree extends Tree {
   splitLeafNode(node : Node, interval : Interval, value : any) : Node{
 
     for (let element of node.get_members().map(e=>e.get_representation())){
-      if (interval.start !== null && interval.start.localeCompare(element) >= 0){
+      if (interval.start !== null && compare(interval.start, element) >= 0){
         throw new Error("unsanitary node1")
       }
-      if (interval.end !== null && interval.end.localeCompare(element) < 0){
+      if (interval.end !== null && compare(interval.end, element) < 0){
         throw new Error("unsanitary node2")
       }
     }
@@ -149,16 +151,21 @@ export class BinaryBTree extends Tree {
       newChildrenList.push(largeMembersNode)
     }
 
+    smallMembersNode.fix_total_member_count()
+    largeMembersNode.fix_total_member_count()
+
     this.checkRelationsMinMax(parent)
     
     if (nodeHasParent) {
       parent.swapChildrenWithRelation(node, relationList, newChildrenList)
+      parent.fix_total_member_count()
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
       for (let i = 0; i < relationList.length; i++){
         node.add_child_no_propagation_with_relation(relationList[i], newChildrenList[i])
       }
       this.set_root_node_identifier(node.get_identifier())
+      node.fix_total_member_count()
     }
 
     if (parent.getRelations().length > this.max_fragment_size){
@@ -179,7 +186,6 @@ export class BinaryBTree extends Tree {
 
     let intervalMap = this.getIntervals(node.getRelations())
 
-      
     let smallChildrenNodeEntries = Array.from(intervalMap.entries()).sort(this.comparisonFunction)
     let largeChildrenNodeEntries = smallChildrenNodeEntries.splice(Math.ceil(smallChildrenNodeEntries.length / 2))
     let splitValue = smallChildrenNodeEntries[smallChildrenNodeEntries.length - 1][1].end
@@ -187,7 +193,6 @@ export class BinaryBTree extends Tree {
     let parent = null;
     let nodeHasParent = true;
     if (node.has_parent_node()){
-      
       parent = node.get_parent_node()
     } else {
       nodeHasParent = false;
@@ -234,9 +239,13 @@ export class BinaryBTree extends Tree {
       }
     }
 
+    smallChildrenNode.fix_total_member_count()
+    largeChildrenNode.fix_total_member_count()
+
 
     if (nodeHasParent) {
       parent = this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValue)
+      parent.fix_total_member_count()
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
       let smallChildRelation = this.createRelation(ChildRelation.LesserOrEqualThanRelation, splitValue, smallChildrenNode.get_identifier())
@@ -244,6 +253,7 @@ export class BinaryBTree extends Tree {
       node.add_child_with_relation(smallChildRelation, smallChildrenNode)
       node.add_child_with_relation(largeChildRelation, largeChildrenNode)
       this.set_root_node_identifier(node.get_identifier())
+      node.fix_total_member_count()
     }
 
     if (parent.getRelations().length >= this.max_fragment_size){
@@ -272,7 +282,7 @@ export class BinaryBTree extends Tree {
     let oldNodeLTERelation = null;
     let oldNodeGTRelation = null;
 
-    let newRelations = new Array();
+    let newRelations = new Array();&
 
     if (splitValue === null || splitValue === undefined){
       throw new Error("Null value split on node swap.")
@@ -347,12 +357,12 @@ export class BinaryBTree extends Tree {
   private comparisonFunction(a : [any, Interval], b : [any, Interval]) { 
     if (a[1].start === null) {return -1}; 
     if (b[1].start === null) {return 1}; 
-    if (typeof a[1].start === "string"){ return a[1].start.localeCompare(b[1].start) }
+    if (typeof a[1].start === "string"){ return compare(a[1].start, b[1].start) }
     return a[1].start - b[1].start
   }
 
   private memberNameComparisonFunction(a : any, b : any) { 
-    if (typeof a === "string"){ return a.localeCompare(b) }
+    if (typeof a === "string"){ return compare(a, b) }
     return a - b
   }
 
@@ -386,6 +396,15 @@ export class BinaryBTree extends Tree {
     return returnMembers;
   }
 
+}
+
+
+function compare(a : any, b : any){
+  if (typeof a === 'string' && typeof b === 'string'){
+    return a.localeCompare(b)
+  } else {
+    return a - b
+  }
 }
   
 

@@ -10,39 +10,32 @@ import fs = require('fs');
 var jsonld = require('jsonld')
 
 var context = {
-  "tree": "https://w3id.org/tree#",
+  "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+  "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
   "foaf": "http://xmlns.com/foaf/0.1/",
   "hydra": "http://www.w3.org/ns/hydra/core#",
+  "tree": "https://w3id.org/tree#",
   "schema": "http://schema.org//",
-  "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
   "value": "tree:value",
   "members": "hydra:member",
   "children": "tree:relation",
-  "suggestions": "hydra:member",
-  "childcount" : "tree:remainingItems",
   "geo" : "http://www.w3.org/2003/01/geo/wgs84_pos#",
   "shacl" : "http://www.w3.org/ns/shacl#"
 }
 
 export class NodeIO{
     sourceDirectory: string;
-    treeFile: string;
-    treeLocation: string;
     dataFolder: string;
-    nodeManages : any;
-    nodePath : any;
+    shaclPath : any;
   /**
    * Initialize the fragment IO managing object.
    * @param {string} sourceDirectory - The source directory where all data of this tree is stored.
    * @param {string} dataFolder - The subfolder of the source directory where the fragments are stored.
    */
-  constructor(sourceDirectory: string, dataFolder: string, treeLocation : string, treeFile : string, nodeManages : any, nodePath : any){
+  constructor(sourceDirectory: string, dataFolder: string, shaclPath : any){
     this.sourceDirectory = sourceDirectory;
     this.dataFolder = dataFolder;
-    this.nodeManages = nodeManages;
-    this.nodePath = nodePath;
-    this.treeFile = treeFile;
-    this.treeLocation = treeLocation;
+    this.shaclPath = shaclPath;
   }
 
 
@@ -63,7 +56,7 @@ export class NodeIO{
   write_node(node: Node) {
     let location = this.getNodeLocation(node.get_node_id())
     let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
-    let wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_total_children_count()) // TODO:: fix for correct amount of total items?
+    let wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
     let JSONSTRING = JSON.stringify(wrapper, function(key, value) {
         return (key == 'fc') ? undefined : value;
     });
@@ -82,13 +75,17 @@ export class NodeIO{
   writeTreeRoot(node : Node, tree: Tree){
     let location = this.getNodeLocation(node.get_node_id())
     let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
-    let wrapper : any = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_total_children_count()) // TODO:: fix for correct amount of total items?
+    let wrapper : any = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
     let treeMetadata = [tree.max_fragment_size, tree.node_count, tree.options]  
     wrapper["treeMetadata"] = treeMetadata
     let JSONSTRING = JSON.stringify(wrapper, function(key, value) {
         return (key == 'fc') ? undefined : value;
     });
     fs.writeFileSync(location, JSONSTRING, {encoding: 'utf-8'})  
+    let returnwrapper = Object.assign(wrapper)
+    delete returnwrapper["treeMetadata"]
+    delete returnwrapper["memberMetadata"]
+    delete returnwrapper["hydra:member"]
     return wrapper
   }
 
@@ -118,7 +115,7 @@ export class NodeIO{
       "@context": context,
       "@id": this.getCollectionId(),
       "@type" : "hydra:Collection",
-      "hydra:totalItems" : totalItems,
+      "tree:remainingItems" : totalItems,
       "hydra:view" : encodedNode,
       "hydra:member" : encodedMembers,
       "memberMetadata" : encodedMembersMetadata,
@@ -129,7 +126,7 @@ export class NodeIO{
     let node = wrapper["hydra:view"]
     let members = wrapper["hydra:member"]
     let membersMetadata =  wrapper["memberMetadata"]
-    let totalItems =  wrapper["hydra:totalItems"]
+    let totalItems =  wrapper["tree:remainingItems"]
     return [node, members, membersMetadata, totalItems]
   }
 
@@ -151,9 +148,7 @@ export class NodeIO{
     let writtenNode: EncodedNode = {
       "@id": this.getNodeIdFromIdentifier( node.get_node_id()),
       "@type": "tree:Node",
-      "hydra:totalItems": node.total_children_count,
-      "hydra:manages" : this.nodeManages,
-      "shacl:path" : this.nodePath,
+      "tree:remainingItems": node.remainingItems,
       "metadataValue" : this.encode_node_value(node.get_identifier().value)
     };
     
@@ -207,17 +202,13 @@ export class NodeIO{
       node.parent_node = this.retrieveNodeIdentifier(node.parent_node["@id"], null)  //parent node does not need information about value, should in fact be removed from tree since unnecessary
     }
     node["fc"] = fc
-    node["total_children_count"] = node["hydra:totalItems"]
+    node["remainingItems"] = node["tree:remainingItems"]
 
     
     // delete node["@graph"]
     delete node.members_metadata;
-    delete node.suggestions_metadata;
-
     delete node["metadataValue"]
-    delete node["hydra:totalItems"]
-    delete node["hydra:manages"]
-    delete node["shacl:path"]
+    delete node["tree:remainingItems"]
     return node;
   }
 
@@ -237,7 +228,8 @@ export class NodeIO{
     // TODO:: set shacl path
     return  {
       "@type" : this.relationToString(relation.type),
-      "tree:node" : { '@id' : this.getNodeIdFromIdentifier(relation.identifier.nodeId), '@type' : 'tree:Node'},
+      "tree:node" : this.getNodeIdFromIdentifier(relation.identifier.nodeId),
+      "shacl:path" : this.shaclPath,
       "value" : this.encode_node_value(relation.value),
     }
   }
@@ -245,7 +237,7 @@ export class NodeIO{
   decode_relation(childRelationObject : any){
     // TODO:: process shacl path
     let relationType = this.stringToRelation(childRelationObject["@type"].substring(5))
-    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]['@id'], this.decode_node_value(childRelationObject["value"]))
+    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"], this.decode_node_value(childRelationObject["value"]))
     let relationValue = this.decode_node_value(childRelationObject["value"])
     return new Relation(relationType, relationValue, relationIdentifier)
   }
@@ -255,7 +247,8 @@ export class NodeIO{
   }
 
   getNodeLocation(nodeId: number){
-    return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
+    return nodeId
+    // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }
   
@@ -306,11 +299,9 @@ interface EncodedFragment {
 interface EncodedNode {
   "@id": any,
   "@type": string,
-  "hydra:totalItems": any;
+  "tree:remainingItems": any;
   "parent_node" ? : any
   "children" ? : any,
-  "hydra:manages" : any,
-  "shacl:path" : any,
   "metadataValue": any
 }
 

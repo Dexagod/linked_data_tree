@@ -160,6 +160,9 @@ export class RTree extends Tree{
         splitNode1.set_members(items)
         splitNode2.set_members(node2items)
         
+        splitNode1.fix_total_member_count()
+        splitNode2.fix_total_member_count()
+        
         let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
         let newChildrenList = [splitNode1, splitNode2]
         let valuesList = [node1value, node2value]
@@ -177,6 +180,9 @@ export class RTree extends Tree{
         splitNode1.set_members(items)
         splitNode2.set_members(node2items)
         node.deleteMembers()
+
+        splitNode1.fix_total_member_count()
+        splitNode2.fix_total_member_count()
 
         node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value)
         node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
@@ -249,6 +255,10 @@ export class RTree extends Tree{
         }
 
 
+        splitNode1.fix_total_member_count()
+        splitNode2.fix_total_member_count()
+
+
         let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
         let newChildrenList = [splitNode1, splitNode2]
         let valuesList = [node1value, node2value]
@@ -278,6 +288,11 @@ export class RTree extends Tree{
         for(let member of node2members){
           splitNode2.add_data(member)
         }
+
+
+        splitNode1.fix_total_member_count()
+        splitNode2.fix_total_member_count()
+        
         node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value)
         node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
         this.set_root_node_identifier(node.get_identifier())
@@ -288,6 +303,7 @@ export class RTree extends Tree{
     }
 
     let parentChildren = parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
+    parent.fix_total_member_count()
     if (parentChildren != null && parentChildren.length >= this.max_fragment_size) {
       this.splitNode(parent, null);
     } 
