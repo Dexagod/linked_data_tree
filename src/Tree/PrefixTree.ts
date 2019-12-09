@@ -89,33 +89,57 @@ export class PrefixTree extends Tree {
     }
     return node;
   }
- /**
+  
+  /**
   * The given dataobject is searched in the tree.
   * For testing and debugging purposes.
   * @param {DataObject} searched_member 
   */
- 
- searchData(value : any): Member[] {
-  return this._search_data_recursive(this.get_root_node(), value)
-}
-
-private _search_data_recursive(currentNode : Node, searchString : string) : Array<Member>{
-  let resultingMembers :  Array<Member> = new Array();
-  let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)
-  if (childrenIdentifiers !== null) {
-    for (let childIdentifier of childrenIdentifiers){
-      if (searchString.startsWith(childIdentifier.value)){
-        let child = this.get_cache().get_node(childIdentifier)
-        resultingMembers = resultingMembers.concat(this._search_data_recursive(child, searchString))
-      } else if (childIdentifier.value.startsWith(searchString)){
-        let child = this.get_cache().get_node(childIdentifier)
-        resultingMembers = resultingMembers.concat(this._search_data_recursive(child, ""))
-      }
-    }
-
-  }  
-  resultingMembers = resultingMembers.concat(currentNode.get_members())
-  return resultingMembers
+  
+  searchData(value : any): Member[] {
+    return this._search_data_recursive(this.get_root_node(), value)[0]
   }
+
+  searchNode(value : any): Node[] {
+    let nodes = this._search_data_recursive(this.get_root_node(), value)[1]
+    let returnNodes = Array<Node>();
+    for (let node of nodes){
+      for (let member of node.get_members()){
+        if (member.get_representation() === value){
+          returnNodes.push(node)
+          break;
+        }
+      }  
+    }
+    return returnNodes
+  }
+
+  private _search_data_recursive(currentNode : Node, searchString : string) : [Array<Member>, Array<Node>]{
+    let resultingMembers :  Array<Member> = new Array();
+    let resultingNodes :  Array<Node> = new Array();
+    let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)
+    if (childrenIdentifiers !== null && childrenIdentifiers.length > 0) {
+      for (let childIdentifier of childrenIdentifiers){
+        if (searchString.startsWith(childIdentifier.value)){
+
+          let child = this.get_cache().get_node(childIdentifier)
+          let [resMems, resNodes] = this._search_data_recursive(child, searchString)
+          resultingMembers = resultingMembers.concat(resMems)
+          resultingNodes = resultingNodes.concat(resNodes)
+
+        } else if (childIdentifier.value.startsWith(searchString)){
+
+          let child = this.get_cache().get_node(childIdentifier)
+          let [resMems, resNodes] = this._search_data_recursive(child, "")
+          resultingMembers = resultingMembers.concat(resMems)
+          resultingNodes = resultingNodes.concat(resNodes)
+        }
+      }
+    } 
+    resultingMembers = resultingMembers.concat(currentNode.get_members())
+    resultingNodes.push(currentNode)
+    return [resultingMembers, resultingNodes]
+  }
+   
 }
 

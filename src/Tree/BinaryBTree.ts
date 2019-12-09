@@ -373,14 +373,34 @@ export class BinaryBTree extends Tree {
   * @param {DataObject} searched_member 
   */
   searchData(value : any): Member[] {
-    return this._search_data_recursive(this.get_root_node(), value)
+    return this._search_data_recursive(this.get_root_node(), value)[0]
+  }
+  
+  searchNode(value : any): Node[] {
+    let nodes = this._search_data_recursive(this.get_root_node(), value)[1]
+    let returnNodes = new Array<Node>();
+    let addedNodes = new Set<string>();
+    for (let node of nodes){
+      for (let member of node.get_members()){
+        if (member.get_representation() === value){
+          if (! addedNodes.has(node.get_node_id())){
+            returnNodes.push(node)
+            addedNodes.add(node.get_node_id())
+          }
+          break;
+        }
+      }  
+    }
+    return returnNodes
   }
 
-  private _search_data_recursive(currentNode : Node, searchValue : string) : Array<Member>{
-    let returnMembers = new Array();
+  private _search_data_recursive(currentNode : Node, searchValue : string) : [Array<Member>, Array<Node>]{
+    let resultingMembers = new Array();
+    let resultingNodes :  Array<Node> = new Array();
     for (let member of currentNode.get_members()){
       if (member.get_representation() === searchValue){
-        returnMembers.push(member)
+        resultingMembers.push(member)
+        resultingNodes.push(currentNode)
       }
     }
     if (currentNode.has_child_relations()){
@@ -389,11 +409,13 @@ export class BinaryBTree extends Tree {
         let intervalStart = entry[1].start
         let intervalEnd = entry[1].end
         if ( (intervalStart === null || this.memberNameComparisonFunction(intervalStart, searchValue) < 0 ) && (intervalEnd === null || this.memberNameComparisonFunction(searchValue, intervalEnd) <= 0) ){ // <= for end because it is a lesser than or equal
-          returnMembers = returnMembers.concat(this._search_data_recursive(this.get_cache().get_node_by_id(entry[0]), searchValue))
+          let [resMems, resNodes] = this._search_data_recursive(this.get_cache().get_node_by_id(entry[0]), searchValue)
+          resultingMembers = resultingMembers.concat(resMems)
+          resultingNodes = resultingNodes.concat(resNodes)
         }
       }
     } 
-    return returnMembers;
+    return [resultingMembers, resultingNodes]
   }
 
 }

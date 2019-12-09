@@ -97,23 +97,9 @@ describe('Prefix Tree tests', () => {
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
     for (let line of readLines) {
       let representations = newtree.searchData(line)
+      expect(newtree.searchNode(line).length).equals(1)
       if (representations === null) { console.error("null prepresentations"); expect(false) } else {
       expect( representations.map(e => e.get_representation()).indexOf(line) ).to.not.equal( -1 ) }
-
-      // let normalizedline = normalizeString(line)
-      //   if (normalizedline !== null){
-      //   let spaceSeparatedRepresentations = normalizedline.split(" ")
-      //   for (let i = 0; i < spaceSeparatedRepresentations.length; i++){
-      //     let repSubString = spaceSeparatedRepresentations.slice(i).join(" ")
-      //     let representations = newtree.searchData(repSubString)
-      //     if (representations === null) { console.error("null prepresentations"); expect(false) } else {
-
-      //       if (representations.map(e => e.get_representation()).indexOf(repSubString) === -1 ) {
-      //         console.log(line, repSubString)
-      //       }
-      //       expect( representations.map(e => e.get_representation()).indexOf(repSubString) ).to.not.equal( -1 ) }
-      //   }
-      // }
     }
   })  
 
@@ -149,20 +135,4 @@ function checkItems(currentNode : Node){
     }
     expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
-
-  // function checkItems(currentNode : Node){
-  //   let totalItems = 0
-  //     for ( let child of currentNode.get_children_objects() ){
-  //       checkItems(child)
-  //       totalItems += child.get_remainingItems() + 1;
-  //     }
-  //     let childRelationArray = currentNode.children;
-  //     for (let relation of childRelationArray){
-  //       expect(relation).not.null
-  //       expect(relation.identifier).not.null
-  //       expect(relation.type).not.null
-  //       expect(relation.value).not.null
-  //     }
-  //     expect(totalItems).to.equal(currentNode.get_remainingItems());
-  // }
 

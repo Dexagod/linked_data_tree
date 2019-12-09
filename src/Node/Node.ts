@@ -43,6 +43,11 @@ export class Node {
         return this.parent_node;
     }
     
+    add_relation_without_node(relation : Relation, totalItems : number) {
+        this.children.push(relation);
+        this.propagate_children_count(totalItems)
+    }
+
     // This function adds a child node to this node.
     // The parent node is set upon creation
     // This method does not propagate the new information in the node. Needed when replacing an old node for multiple new nodes.

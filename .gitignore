@@ -1,6 +1,7 @@
 tests/testdata/
 node_modules/
 out/
+dist/
 package-lock.json
 coverage/
 treestatistics.csv

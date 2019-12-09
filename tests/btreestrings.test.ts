@@ -88,6 +88,7 @@ describe('Binary Tree String tests', () => {
 
       for (let rep of representations) {
         let foundreps = newtree.searchData(rep);
+        expect(newtree.searchNode(rep).length).equals(1)
         // console.log("foundreps", foundreps)
         if (foundreps === null) { expect(false) } else {
           let found = false
@@ -135,66 +136,3 @@ describe('Binary Tree String tests', () => {
   }
   
 
-
-//   function checkItems(currentNode : Node){
-//     let totalItems = 0
-//       for ( let child of currentNode.get_children_objects() ){
-//         checkItems(child)
-//         totalItems += child.get_remainingItems() + 1;
-//       }
-//       let childRelationArray = currentNode.children;
-//       for (let relation of childRelationArray){
-//         expect(relation).not.null
-//         expect(relation.identifier).not.null
-//         expect(relation.type).not.null
-//       }
-//       expect(totalItems).to.equal(currentNode.get_remainingItems());
-//   }
-
-// })
-
-
-
-
-
-//   it('checking total children count in each node to be the sum of the child items ', () => {
-//     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
-//     let rootNode = newtree.getTreeObject().get_root_node()
-
-//     // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
-//     checkItems(rootNode)
-
-//   })
-
-//   it('checking all items have been added to the tree', () => {
-//     if(newtree === null){
-//       expect(false)
-//       return;
-//     }
-//     for (let line of readLines) { 
-//       let representations = newtree.searchData(line)
-//       if (representations === null) { console.error("null prepresentations"); expect(false) } else {
-
-//         expect( representations.map(e => e.get_representation()).indexOf(line) ).to.not.equal( -1 ) }
-//     }
-//   })
-
-// });
-
-
-
-// function checkItems(currentNode : Node){
-//   let totalItems = 0
-//     for ( let child of currentNode.get_children_objects() ){
-//       checkItems(child)
-//       totalItems += child.get_remainingItems() + 1;
-//     }
-//     let childRelationArray = currentNode.children;
-//     for (let relation of childRelationArray){
-//       expect(relation).not.null
-//       expect(relation.identifier).not.null
-//       expect(relation.type).not.null
-//       expect(relation.value).not.null
-//     }
-//     expect(totalItems).to.equal(currentNode.get_remainingItems());
-// }

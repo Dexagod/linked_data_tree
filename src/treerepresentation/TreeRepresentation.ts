@@ -2,6 +2,7 @@ import { Tree } from '../Tree/Tree';
 import { Cache } from "../Cache/Cache"
 import { Member } from "../DataObjects/Member"
 import { NodeIO } from '../IO/NodeIO';
+import { Node } from '../Node/Node';
 export abstract class TreeRepresentation{
     tree : Tree;
     sourceDirectory : string;
@@ -39,6 +40,10 @@ export abstract class TreeRepresentation{
     
     searchData(value: any) : Member[] | null{
         return this.tree.searchData(value)
+    }
+
+    searchNode(value: any) : Node[] {
+        return this.tree.searchNode(value)
     }
     
   

@@ -87,6 +87,12 @@ export abstract class Tree {
     /**
      * Returns the tree fragment cache.
      */
+
+    abstract searchNode(value : any) : Array<Node>;
+    /**
+     * Returns the tree fragment cache.
+     */
+
     get_cache() {
         return this.cache;
     }

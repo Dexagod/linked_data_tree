@@ -54,30 +54,49 @@ export class RTree extends Tree{
   }
   
   searchData(value : any): Member[] {
-    return this._search_data_recursive(this.get_root_node(), value)
+    return this._search_data_recursive(this.get_root_node(), value)[0]
   }
 
-  private _search_data_recursive(currentNode : Node, area: terraformer.Polygon | terraformer.Point) : Array<Member>{
+  searchNode(value : any): Array<Node> {
+    let nodes = this._search_data_recursive(this.get_root_node(), value)[1]
+    let returnNodes = Array<Node>();
+    for (let node of nodes){
+      for (let member of node.get_members()){
+        if (this.isContained(member.get_representation(), value)){
+          returnNodes.push(node)
+          break;
+        }
+      }  
+    }
+    return returnNodes
+  }
+
+  private _search_data_recursive(currentNode : Node, area: terraformer.Polygon | terraformer.Point) : [Array<Member>, Array<Node>]{
     let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
-    let retultingMembers :  Array<Member> = new Array();
+    let resultingMembers :  Array<Member> = new Array();
+    let resultingNodes :  Array<Node> = new Array();
     if (childrenIdentifiers !== null) {
       let containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area)
 
       if (containingChildren.length === 0){
-        return [];
+        resultingNodes.concat(currentNode)
+        return [[], resultingNodes];
       } else {
         containingChildren.forEach(child => {
-          retultingMembers = retultingMembers.concat(this._search_data_recursive(child, area))
+          let [resMems, resNodes] = this._search_data_recursive(child, area)
+          resultingMembers = resultingMembers.concat(resMems)
+          resultingNodes = resultingNodes.concat(resNodes)
         });
 
       }
-    }
+    } 
     currentNode.members.forEach(tdo => {
       if (this.isContained(tdo.get_representation(), area)){
-        retultingMembers.push(tdo)
+        resultingMembers.push(tdo)
       }
     })
-    return retultingMembers
+    resultingNodes.push(currentNode)
+    return [resultingMembers, resultingNodes]
   }
 
   private findClosestBoundingBoxIndex(currentNode : Node, dataWKTstring : any) : Node {

@@ -5,11 +5,13 @@ export class Relation{
   type : ChildRelation;
   value : any;
   identifier : Identifier;
+  path : string | null;
 
-  constructor(type : ChildRelation, value : any, identifier : Identifier){
+  constructor(type : ChildRelation, value : any, identifier : Identifier, path : string | null = null){
     this.type = type;
     this.value = value;
     this.identifier = identifier;
+    this.path = path;
   }
 
 }
