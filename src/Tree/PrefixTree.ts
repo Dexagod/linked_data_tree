@@ -14,10 +14,7 @@ export class PrefixTree extends Tree {
     if(this.node_count === 0) {
       this.createFirstNode("", null)
     }
-    let repr = representation
-    // Check for invalid object.
-    // Object must have a representation.
-    if (repr == "" || repr == null){
+    if (representation == "" || representation == null){
       return null;
     }
     return this.recursiveAddition(this.get_root_node(), member, representation)

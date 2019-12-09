@@ -255,7 +255,7 @@ export class BinaryBTree extends Tree {
       this.set_root_node_identifier(node.get_identifier())
       node.fix_total_member_count()
     }
-
+    
     if (parent.getRelations().length >= this.max_fragment_size){
       this.splitInternalNode(parent, value)
     }

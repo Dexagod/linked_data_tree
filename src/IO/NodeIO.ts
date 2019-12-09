@@ -290,7 +290,7 @@ export class NodeIO{
   }
 
   getRootNodeIdentifier(){
-    return this.dataFolder + "node0.jsonld";
+    return "/" + this.dataFolder + "node0.jsonld";
   }
 }
 
