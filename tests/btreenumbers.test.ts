@@ -24,8 +24,11 @@ let maxCachedFragments = 10000
 
 
 
-describe('Binary Tree String tests', () => {
-  let readLines = fs.readFileSync(sourceFile).toString().split("\n")
+describe('Binary Tree numbers tests', () => {
+  let readLines : Array<number> = []// fs.readFileSync(sourceFile).toString().split("\n")
+  for (let i = 0; i < 20000; i++){
+    readLines.push(Math.floor(Math.random() * 10000))
+  }
   let representations : any[] = []
 
   var treeManager = new BinaryBTreeManager()
@@ -41,20 +44,7 @@ describe('Binary Tree String tests', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
   });
 
-  let count = 0
-  it('Adding a single item to tree', () => {
-    let long = 10//(Math.random() * 2) + 2;
-    let lat = 20//(Math.random() * 3) + 50;
-    let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-        @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-        <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
-
-    tree.addData("Teststraat", dataObject)
-    expect(tree.getTreeObject().node_count).to.equal(1);
-  });
-
-    
+  let count = 0 
   it('adding street names to tree', () => {
     for (let line of readLines) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
@@ -140,7 +130,7 @@ function checkItems(currentNode : Node){
 
 function checkRelations(relationList : Array<Relation>){
   let sortedRelations = relationList.sort(function(rel1, rel2){
-    if (rel1.value === rel2.value){
+    if (parseInt(rel1.value) === parseInt(rel2.value)){
       if (rel1.type === ChildRelation.LesserOrEqualThanRelation && rel2.type === ChildRelation.GreaterThanRelation){
         return -1;
       } else if (rel1.type === ChildRelation.GreaterThanRelation && rel2.type === ChildRelation.LesserOrEqualThanRelation){
@@ -151,11 +141,7 @@ function checkRelations(relationList : Array<Relation>){
         return 0
       }
     } else {
-      if (typeof rel1.value === "string"){
-        return rel1.value.localeCompare(rel2.value)
-      } else {
-        return rel1.value - rel2.value
-      }
+      return parseInt(rel1.value) - parseInt(rel2.value)
     }
   })
 
@@ -163,19 +149,15 @@ function checkRelations(relationList : Array<Relation>){
     let smallRelation = sortedRelations[i]
     let largeRelation = sortedRelations[i+1]
     
-    if (smallRelation.value === largeRelation.value){
+    if (parseInt(smallRelation.value) === parseInt(largeRelation.value)){
       expect(smallRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
       expect(largeRelation.type).equals(ChildRelation.GreaterThanRelation)
+      expect(smallRelation.identifier.nodeId).not.equals(largeRelation.identifier.nodeId)
     } else {
-      if (typeof smallRelation.value === 'string'){
-        expect(smallRelation.value.localeCompare(largeRelation.value)).lt(0)
-        expect(smallRelation.type).equals(ChildRelation.GreaterThanRelation)
-        expect(largeRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
-      } else{
-        expect(smallRelation.value).lt(largeRelation.value)
-        expect(smallRelation.type).equals(ChildRelation.GreaterThanRelation)
-        expect(largeRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
-      }
+      expect(parseInt(smallRelation.value)).lt(parseInt(largeRelation.value))
+      expect(smallRelation.type).equals(ChildRelation.GreaterThanRelation)
+      expect(largeRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
+      expect(smallRelation.identifier.nodeId).equals(largeRelation.identifier.nodeId)
     }
   }
 }

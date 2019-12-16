@@ -231,7 +231,7 @@ export class NodeIO{
     }
     return  {
       "@type" : this.relationToString(relation.type),
-      "tree:node" : this.getNodeIdFromIdentifier(relation.identifier.nodeId),
+      "tree:node" : { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
       "shacl:path" : relation.path,
       "value" : this.encode_node_value(relation.value),
     }
@@ -240,7 +240,7 @@ export class NodeIO{
   decode_relation(childRelationObject : any){
     // TODO:: process shacl path
     let relationType = this.stringToRelation(childRelationObject["@type"].substring(5))
-    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"], this.decode_node_value(childRelationObject["value"]))
+    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]["@id"], this.decode_node_value(childRelationObject["value"]))
     let relationValue = this.decode_node_value(childRelationObject["value"])
     let shaclPath = childRelationObject["shacl:path"]
     return new Relation(relationType, relationValue, relationIdentifier, shaclPath)
