@@ -264,6 +264,7 @@ export class Node {
      */
     set_members(members: Array<Member>) {
         this.members = members;
+        this.remainingItems += members.length
     }
 
     /**
@@ -282,6 +283,16 @@ export class Node {
         this.members.push(member);
         this.propagate_children_count(1)
     }
+
+    /**
+     * Adds the data object to this node. If the node is a leaf node, it ties to propagate the data up the tree.
+     * @param {Member} member 
+     */
+    add_data_no_propagation(member: Member) {
+        if (member.contents === null){ return }
+        this.members.push(member);
+    }
+    
     
     /**
      * Helper method to transfer node information to a new node.

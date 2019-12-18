@@ -96,6 +96,7 @@ export class Cache {
     delete_node(node: Node) : void {
         this.cache.delete(node.get_node_id());
         this.cache_hits.delete(node.get_node_id());
+        this.nodeIO.delete_node(node.get_node_id())
     }
 
     delete_node_file_by_id(nodeId: string) : void {

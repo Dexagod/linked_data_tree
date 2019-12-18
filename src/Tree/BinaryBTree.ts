@@ -9,6 +9,7 @@ import { Interval } from '../Interval';
 
 export class BinaryBTree extends Tree {
 
+  maxMembersInnerNodes:number = this.max_fragment_size / 2
   /**
    * Adds the given data to the tree.
    * @param {Member} member 
@@ -48,7 +49,6 @@ export class BinaryBTree extends Tree {
       throw new Error("There is a gap between the nodes where a value fell through.")
     }
 
-
     if (member !== null) {
       currentNode.add_data(member)
       if (currentNode.get_members().length > this.max_fragment_size){
@@ -62,7 +62,7 @@ export class BinaryBTree extends Tree {
   private getIntervals(relationList: Array<Relation>) : Map<any, Interval>{
     let relationMap = new Map()
     for (let relation of relationList){
-      if (relation.type === ChildRelation.LesserOrEqualThanRelation){
+      if (relation.type === ChildRelation.LesserThanRelation){
         this.addToIntervalMap(relationMap, relation.identifier.nodeId , null, relation.value)
       }
       if (relation.type === ChildRelation.GreaterThanRelation){
@@ -83,7 +83,6 @@ export class BinaryBTree extends Tree {
       }
     }
 
-
     let membersSet = new Set<any>()
     for (let member of node.get_members().map(e => e.get_representation())){
       membersSet.add(member)
@@ -94,23 +93,23 @@ export class BinaryBTree extends Tree {
       return node;
     }
 
-
-    
     let orderedMemberNames = Array.from(membersSet).sort(this.memberNameComparisonFunction)
-    let smallMemberNames = orderedMemberNames.slice(0, Math.ceil(orderedMemberNames.length / 2))
-    let largeMemberNames = orderedMemberNames.slice(Math.ceil(orderedMemberNames.length / 2))
-    let splitValue : any = smallMemberNames[smallMemberNames.length-1]
+
+    let splitIndex = Math.floor(orderedMemberNames.length / 2)
+    let splitValue : any = orderedMemberNames[splitIndex]
 
     let smallMembers = new Array<Member>();
     let largeMembers = new Array<Member>();
+    let splitMembers = new Array<Member>();
+
     for (let member of node.get_members()){
-      if (smallMemberNames.indexOf(member.get_representation()) != -1){
+      if (this.memberNameComparisonFunction(splitValue, member.get_representation()) > 0){
         smallMembers.push(member) 
-      } else if (largeMemberNames.indexOf(member.get_representation()) != -1){
+      } else if (this.memberNameComparisonFunction(splitValue, member.get_representation()) < 0){
         largeMembers.push(member)
       } else {
-        throw new Error('member name not in list')
-      }
+        splitMembers.push(member);
+      } 
     }
 
     node.deleteMembers() // SPLITVALUE is highest value for the LesserThanOrEqual relation
@@ -124,7 +123,6 @@ export class BinaryBTree extends Tree {
       node.clear()
       parent = node
     }
-
 
     let smallMembersNode = new Node(null, parent, this)
     let largeMembersNode = new Node(null, parent, this)
@@ -140,14 +138,14 @@ export class BinaryBTree extends Tree {
       newChildrenList.push(smallMembersNode)
     }
 
-    relationList.push( this.createRelation(ChildRelation.LesserOrEqualThanRelation, splitValue, smallMembersNode.get_identifier()) )
+    relationList.push( this.createRelation(ChildRelation.LesserThanRelation, splitValue, smallMembersNode.get_identifier()) )
     newChildrenList.push(smallMembersNode)
     
     relationList.push( this.createRelation(ChildRelation.GreaterThanRelation, splitValue, largeMembersNode.get_identifier()) )
     newChildrenList.push(largeMembersNode)
     
     if (interval.end !== null){
-      relationList.push( this.createRelation(ChildRelation.LesserOrEqualThanRelation, interval.end, largeMembersNode.get_identifier()) )
+      relationList.push( this.createRelation(ChildRelation.LesserThanRelation, interval.end, largeMembersNode.get_identifier()) )
       newChildrenList.push(largeMembersNode)
     }
 
@@ -168,7 +166,12 @@ export class BinaryBTree extends Tree {
       node.fix_total_member_count()
     }
 
-    if (parent.getRelations().length > this.max_fragment_size){
+    if (splitMembers.length === 0) { throw new Error("Splitting member in B tree was null")}
+    for (let member of splitMembers){
+      parent.add_data_no_propagation(member)
+    }
+
+    if (parent.get_members().length > this.maxMembersInnerNodes){
       this.splitInternalNode(parent, value)
     }
 
@@ -184,11 +187,49 @@ export class BinaryBTree extends Tree {
 
     let [start, end] = this.checkRelationsMinMax(node)
 
-    let intervalMap = this.getIntervals(node.getRelations())
+    let relationValueSet = new Set<any>()
+    for (let relationValue of node.get_children().map(e => e.value)){
+      relationValueSet.add(relationValue)
+    }
 
-    let smallChildrenNodeEntries = Array.from(intervalMap.entries()).sort(this.comparisonFunction)
-    let largeChildrenNodeEntries = smallChildrenNodeEntries.splice(Math.ceil(smallChildrenNodeEntries.length / 2))
-    let splitValue = smallChildrenNodeEntries[smallChildrenNodeEntries.length - 1][1].end
+    let orderedRelationValues = Array.from(relationValueSet).sort(this.memberNameComparisonFunction)
+
+    let splitIndex = Math.floor(orderedRelationValues.length / 2)
+    let splitValue : any = orderedRelationValues[splitIndex]
+    // let smallRelationValues = orderedRelationValues.slice(0, splitIndex)
+    // let largeRelationValues = orderedRelationValues.slice(splitIndex+1)
+
+    let smallRelations = []
+    let largeRelations = []
+
+    for (let relation of node.getRelations()){
+      if (this.memberNameComparisonFunction(splitValue, relation.value) > 0){
+        smallRelations.push(relation)
+      } else if (this.memberNameComparisonFunction(splitValue, relation.value) < 0){
+        largeRelations.push(relation)
+      } else{
+        if (relation.type === ChildRelation.LesserThanRelation){
+          // smallRelations.push(relation)
+        } else if (relation.type === ChildRelation.GreaterThanRelation){
+          // largeRelations.push(relation)
+        }
+      }
+    }
+
+    let smallMembers = new Array<Member>();
+    let largeMembers = new Array<Member>();
+    let splitMembers = new Array<Member>();
+    for (let member of node.get_members()){
+      if (this.memberNameComparisonFunction(splitValue, member.get_representation()) > 0){
+        smallMembers.push(member) 
+      } else if (this.memberNameComparisonFunction(splitValue, member.get_representation()) < 0){
+        largeMembers.push(member)
+      } else if (member.get_representation() === splitValue){
+        splitMembers.push(member);
+      } else {
+        throw new Error('member name not in list')
+      }
+    }
 
     let parent = null;
     let nodeHasParent = true;
@@ -201,67 +242,52 @@ export class BinaryBTree extends Tree {
     }
 
 
+    console.log("BEFORE", parent.getRelations())
+
+    
     let smallChildrenNode = new Node(null, parent, this)
     let largeChildrenNode = new Node(null, parent, this)
-
-    for (let entry of smallChildrenNodeEntries){
-      let entryIdentifier = new Identifier(entry[0], null)
-      let entryStart = entry[1].start
-      let entryEnd = entry[1].end
-      if (entryIdentifier === null || entryIdentifier === undefined || entryIdentifier.nodeId === null || entryIdentifier.nodeId === undefined ) { throw new Error(" undefined entry identifier ")}
-
-      if (entryStart !== null){
-        let smallChildGTRelation = new Relation(ChildRelation.GreaterThanRelation, entryStart, entryIdentifier)
-        smallChildrenNode.add_child_with_relation(smallChildGTRelation, this.cache.get_node(entryIdentifier))
-      } if (entryEnd !== null){
-        let smallChildLTERelation = new Relation(ChildRelation.LesserOrEqualThanRelation, entryEnd, entryIdentifier)
-        smallChildrenNode.add_child_with_relation(smallChildLTERelation, this.cache.get_node(entryIdentifier))
-      } else {
-        throw new Error("Impossible internal tree state")
-      } 
-    }
-
-    for (let entry of largeChildrenNodeEntries){
-      let entryIdentifier = new Identifier(entry[0], null)
-      let entryStart = entry[1].start
-      let entryEnd = entry[1].end
-      if (entryIdentifier === null || entryIdentifier === undefined || entryIdentifier.nodeId === null || entryIdentifier.nodeId === undefined ) { throw new Error(" undefined entry identifier ")}
-
-      if (entryStart !== null){
-        let largeChildGTRelation = new Relation(ChildRelation.GreaterThanRelation, entryStart, entryIdentifier)
-        largeChildrenNode.add_child_with_relation(largeChildGTRelation, this.cache.get_node(entryIdentifier))
-      } else {
-        throw new Error("this should not happen 4")
-      } 
-      if (entryEnd !== null){
-        let largeChildLTERelation = new Relation(ChildRelation.LesserOrEqualThanRelation, entryEnd, entryIdentifier)
-        largeChildrenNode.add_child_with_relation(largeChildLTERelation, this.cache.get_node(entryIdentifier))
-      }
-    }
-
+    
+    smallChildrenNode.set_children(smallRelations)
+    smallChildrenNode.set_members(smallMembers)
     smallChildrenNode.fix_total_member_count()
+
+    largeChildrenNode.set_children(largeRelations)
+    largeChildrenNode.set_members(largeMembers)
     largeChildrenNode.fix_total_member_count()
+
+    
+    if (splitMembers.length === 0) { throw new Error(" Parent could not create a relation with two new child nodes ")}
+
+
 
 
     if (nodeHasParent) {
-      parent = this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValue)
-      parent.fix_total_member_count()
+      this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValue)
+      // parent.remove_child(node)
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
-      let smallChildRelation = this.createRelation(ChildRelation.LesserOrEqualThanRelation, splitValue, smallChildrenNode.get_identifier())
+      let smallChildRelation = this.createRelation(ChildRelation.LesserThanRelation, splitValue, smallChildrenNode.get_identifier())
       let largeChildRelation = this.createRelation(ChildRelation.GreaterThanRelation, splitValue, largeChildrenNode.get_identifier())
-      node.add_child_with_relation(smallChildRelation, smallChildrenNode)
-      node.add_child_with_relation(largeChildRelation, largeChildrenNode)
+      parent.add_child_with_relation(smallChildRelation, smallChildrenNode)
+      parent.add_child_with_relation(largeChildRelation, largeChildrenNode)
+      for (let member of splitMembers){
+        parent.add_data_no_propagation(member)
+      }
       this.set_root_node_identifier(node.get_identifier())
-      node.fix_total_member_count()
     }
+
+    parent.fix_total_member_count()
     
-    if (parent.getRelations().length >= this.max_fragment_size){
+    if (parent.get_members().length >= this.maxMembersInnerNodes){
       this.splitInternalNode(parent, value)
     }
 
 
+    console.log(splitValue)
+    console.log("check kleiner")
     let [smallstart, smallend] = this.checkRelationsMinMax(smallChildrenNode)
+    console.log("check groter")
     let [largestart, largeend] = this.checkRelationsMinMax(largeChildrenNode)
 
     if (smallend !== largestart){
@@ -270,13 +296,13 @@ export class BinaryBTree extends Tree {
     if (smallstart !== start || largeend !== end){
       throw new Error("SPLIT NODE WRONG EDGES")
     }
+    console.log("check parent")
     this.checkRelationsMinMax(parent)
     
     return node;
 
   }
-  
-  
+
   swapNodeChildWithNewChildren(parent: Node, oldNode: Node, smallChildrenNode : Node, largeChildrenNode : Node, splitValue : number){
     let childRelations = parent.children;
     let oldNodeLTERelation = null;
@@ -348,6 +374,8 @@ export class BinaryBTree extends Tree {
     let sortedIntervals = Array.from(intervals.entries()).sort(this.comparisonFunction)
     for (let i = 0; i < (sortedIntervals.length - 1); i++) {
       if(sortedIntervals[i] === undefined || sortedIntervals[i+1] === undefined || sortedIntervals[i][1].end !== sortedIntervals[i+1][1].start){
+        console.log(node.getRelations())
+        console.log(sortedIntervals[i][1] , sortedIntervals[i+1][1])
         throw new Error("node relations are not filling the whole namespace")
       }
     }
@@ -360,6 +388,7 @@ export class BinaryBTree extends Tree {
     if (typeof a[1].start === "string"){ return compare(a[1].start, b[1].start) }
     return a[1].start - b[1].start
   }
+
 
   private memberNameComparisonFunction(a : any, b : any) { 
     if (typeof a === "string"){ return compare(a, b) }

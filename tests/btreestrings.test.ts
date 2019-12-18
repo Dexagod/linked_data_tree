@@ -17,7 +17,7 @@ let sourceFile = "tests/straatnamen20k.txt"
 let binaryTreeStringDataLocation = "binary_streets/"
 let binaryTreeStringLocation = "binary_collections/"
 let binaryTreeStringFile = "binary_streetnames" 
-let maxFragmentSize = 6 // 100
+let maxFragmentSize = 100
 let maxCachedFragments = 10000
 // Read input file
 
@@ -141,9 +141,9 @@ function checkItems(currentNode : Node){
 function checkRelations(relationList : Array<Relation>){
   let sortedRelations = relationList.sort(function(rel1, rel2){
     if (rel1.value === rel2.value){
-      if (rel1.type === ChildRelation.LesserOrEqualThanRelation && rel2.type === ChildRelation.GreaterThanRelation){
+      if (rel1.type === ChildRelation.LesserThanRelation && rel2.type === ChildRelation.GreaterThanRelation){
         return -1;
-      } else if (rel1.type === ChildRelation.GreaterThanRelation && rel2.type === ChildRelation.LesserOrEqualThanRelation){
+      } else if (rel1.type === ChildRelation.GreaterThanRelation && rel2.type === ChildRelation.LesserThanRelation){
         return 1
       } else {
         console.log("RELATIONS INCORRECT", rel1, rel2)
@@ -164,17 +164,17 @@ function checkRelations(relationList : Array<Relation>){
     let largeRelation = sortedRelations[i+1]
     
     if (smallRelation.value === largeRelation.value){
-      expect(smallRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
+      expect(smallRelation.type).equals(ChildRelation.LesserThanRelation)
       expect(largeRelation.type).equals(ChildRelation.GreaterThanRelation)
     } else {
       if (typeof smallRelation.value === 'string'){
         expect(smallRelation.value.localeCompare(largeRelation.value)).lt(0)
         expect(smallRelation.type).equals(ChildRelation.GreaterThanRelation)
-        expect(largeRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
+        expect(largeRelation.type).equals(ChildRelation.LesserThanRelation)
       } else{
         expect(smallRelation.value).lt(largeRelation.value)
         expect(smallRelation.type).equals(ChildRelation.GreaterThanRelation)
-        expect(largeRelation.type).equals(ChildRelation.LesserOrEqualThanRelation)
+        expect(largeRelation.type).equals(ChildRelation.LesserThanRelation)
       }
     }
   }
