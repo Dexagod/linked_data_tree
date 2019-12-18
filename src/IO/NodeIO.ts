@@ -246,7 +246,7 @@ export class NodeIO{
     return new Relation(relationType, relationValue, relationIdentifier, shaclPath)
   }
 
-  private getCollectionId(){
+  getCollectionId(){
     return this.getRootNodeIdentifier() + "#Collection"
   }
 
