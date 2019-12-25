@@ -256,7 +256,7 @@ export class BinaryBTree extends Tree {
       node.fix_total_member_count()
     }
     
-    if (parent.getRelations().length >= this.max_fragment_size){
+    if (parent.getRelations().length > this.max_fragment_size){
       this.splitInternalNode(parent, value)
     }
 
