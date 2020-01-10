@@ -51,7 +51,8 @@ export class BinaryBTree extends Tree {
 
     if (member !== null) {
       currentNode.add_data(member)
-      if (currentNode.get_members().length > this.max_fragment_size){
+
+      if (this.checkNodeSplit(currentNode)) {
         return this.splitLeafNode(currentNode, interval, value)
       }
     }
@@ -65,7 +66,13 @@ export class BinaryBTree extends Tree {
       if (relation.type === ChildRelation.LesserOrEqualThanRelation){
         this.addToIntervalMap(relationMap, relation.identifier.nodeId , null, relation.value)
       }
+      if (relation.type === ChildRelation.LesserThanRelation){
+        this.addToIntervalMap(relationMap, relation.identifier.nodeId , null, relation.value)
+      }
       if (relation.type === ChildRelation.GreaterThanRelation){
+        this.addToIntervalMap(relationMap, relation.identifier.nodeId , relation.value, null)
+      }
+      if (relation.type === ChildRelation.GreaterOrEqualThanRelation){
         this.addToIntervalMap(relationMap, relation.identifier.nodeId , relation.value, null)
       }
     }
@@ -89,6 +96,7 @@ export class BinaryBTree extends Tree {
       membersSet.add(member)
     }
 
+    console.log(membersSet)
     if (membersSet.size < 4) {
       // We cannot split this node, because that would give problems to the balancing; We need at least 2 different values left and right
       return node;

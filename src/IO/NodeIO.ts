@@ -213,7 +213,7 @@ export class NodeIO{
   }
 
   encode_member(member: Member){
-    return [member.contents, this.encode_tdo_value(member.representation)]
+    return [member.contents, this.encode_tdo_value(member.representation), member.size]
   }
 
   decode_member(member: any): Member{

@@ -157,7 +157,7 @@ export class Node {
         this.children = new Array();
     }
 
-    get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier> | null {
+    get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier> {
         let returnList = new Array()
         for (let relation of this.children){
             if (relation.type === childRelation){

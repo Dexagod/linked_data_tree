@@ -24,7 +24,7 @@ export class PrefixTree extends Tree {
     if (currentNode.has_child_relations()){
       let childRelationIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)
       if (childRelationIdentifiers !== null) {
-        for (let childIdentifier of childRelationIdentifiers){
+        for (let childIdentifier of childRelationIdentifiers.sort(function(a, b) { return b.value.length - a.value.length })){ //START SEARCHING WITH LONGEST MATCH
           if (searchString.startsWith(childIdentifier.value)){
             return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value)
           }
@@ -33,20 +33,54 @@ export class PrefixTree extends Tree {
     } 
     if (member !== null) {
       currentNode.add_data(member)
-      if (currentNode.get_members().length <= this.max_fragment_size) {
-        return currentNode;
-      } else {
+      if (this.checkNodeSplit(currentNode)){
         return this.splitNode(currentNode, member.get_representation(), childValue)
+      } else {
+        return currentNode;
       }
     }
     return currentNode;
   }
 
   private splitNode(node : Node, addedString : string, childValue : string) : Node {
-    let nodeMembers = node.get_members()
+
+    let newNodeMembers = new Array<any>()
+    let potentialSplitMembers = new Array();
+    for (let member of node.get_members()){
+      if (member.representation === childValue){
+        newNodeMembers.push(member)
+      } else {
+        potentialSplitMembers.push(member)
+      }
+    }
+
+    let childNode = null;
+    if (potentialSplitMembers.length < Math.ceil(this.max_fragment_size / 100) ||  potentialSplitMembers.length < 5){
+      let nodeMembers = node.get_members()
+      let memberString = nodeMembers[0].representation
+      childNode = new Node(memberString, node, this)
+
+      let parentNodeList = potentialSplitMembers
+      let childNodeList = []
+
+      for (let member of newNodeMembers){
+        if (parentNodeList.length < Math.floor(this.max_fragment_size / 2)){
+          parentNodeList.push(member)
+        } else {
+          childNodeList.push(member)
+        }
+      }
+
+      node.set_members(parentNodeList)
+      childNode.set_members(childNodeList)
+      node.add_child(ChildRelation.PrefixRelation, childNode, memberString)
+      childNode.fix_total_member_count()
+      node.fix_total_member_count()  
+      return childNode;
+    }
 
 
-    let firstLettersArray = nodeMembers.map(e => e.get_representation().substring(childValue.length, childValue.length + 1))
+    let firstLettersArray = potentialSplitMembers.map(e => e.get_representation().substring(childValue.length, childValue.length + 1))
     const frequencyMap : Map<any, any> = firstLettersArray.reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map())
 
     // console.log(currentNodePathString, currentNodePathString.length, frequencyMap, nodeMembers.map(e => [e.get_representation().substring(currentNodePathString.length, currentNodePathString.length + 1), this.getNormalizedString(e.get_representation()), e.get_representation()]))
@@ -60,10 +94,9 @@ export class PrefixTree extends Tree {
     }
     if (maxChar === null) { throw new Error("Something went wrong internally while building the tree. Could not split an internal node on overflow.")}
 
-    let newNodeMembers = new Array<any>()
     let splitMembers = new Array<any>()
 
-    for (let member of nodeMembers){
+    for (let member of potentialSplitMembers){
       if (member.representation.substring(childValue.length, childValue.length + 1) === maxChar){
         splitMembers.push(member)
       } else {
@@ -71,17 +104,38 @@ export class PrefixTree extends Tree {
       }
     }
 
-    node.set_members(newNodeMembers)
 
-    let newNodeValue = childValue + maxChar
-    let childNode = new Node(newNodeValue, node, this)
-    childNode.set_members(splitMembers)
-    node.add_child(ChildRelation.PrefixRelation, childNode, newNodeValue)
+    
+    if (splitMembers.length !== 0){
+      let newNodeValue = childValue + maxChar
+      childNode = new Node(newNodeValue, node, this)
+      node.set_members(newNodeMembers)
+      childNode.set_members(splitMembers)
+      node.add_child(ChildRelation.PrefixRelation, childNode, newNodeValue)
+      childNode.fix_total_member_count()
+      node.fix_total_member_count()  
+    }
+    
+    if (this.checkNodeSplit(node)){
+      // THERE ARE MORE THAN fragmensize AMOUNT OF ITEMS WITH THE SAME NAME
+      let nodeMembers = node.get_members()
+      let memberString = nodeMembers[0].representation
+      childNode = new Node(memberString, node, this)
 
-    childNode.fix_total_member_count()
-    node.fix_total_member_count()
+      let newMembers = nodeMembers.slice(0, Math.floor(nodeMembers.length / 2))
+      let splitMembers = nodeMembers.slice(Math.floor(nodeMembers.length / 2))
 
-    if (addedString.startsWith(maxChar)){
+      node.set_members(newMembers)
+      childNode.set_members(splitMembers)
+      node.add_child(ChildRelation.PrefixRelation, childNode, memberString)
+      childNode.fix_total_member_count()
+      node.fix_total_member_count()  
+    }
+
+    if (node.get_members().length > this.max_fragment_size){ throw new Error()}
+    
+
+    if (childNode !== null && addedString.startsWith(maxChar)){
       return childNode
     }
     return node;

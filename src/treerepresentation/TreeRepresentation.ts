@@ -35,6 +35,7 @@ export abstract class TreeRepresentation{
      */
     addData(representation: any, data: any, dataRepresentation = representation) {
       let newmember = new Member(dataRepresentation, data)
+      
       this.tree.addData(representation, newmember)
     }
     

@@ -2,6 +2,7 @@ import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 import { Cache } from "../Cache/Cache";
 import { Identifier } from '../Identifier';
+const jsonld = require("jsonld")
 
 export abstract class Tree {
 
@@ -112,6 +113,13 @@ export abstract class Tree {
     
     set_root_node_identifier(identifier : Identifier){
         this.root_node_identifier = identifier;
+    }
+
+    checkNodeSplit(node: Node) : boolean{
+        if (node.get_members().length > this.max_fragment_size) {
+            return true
+        }
+        return false;
     }
 }
 

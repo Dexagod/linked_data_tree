@@ -21,7 +21,7 @@ export class HydraPartialCollectionView extends Tree {
   }
 
   private recursiveAddition(currentNode : Node, member : Member) : Node {
-    if (currentNode.get_members().length <= this.max_fragment_size) {
+    if (currentNode.get_members().length < this.max_fragment_size) {
       currentNode.add_data(member)
       return currentNode;
     }
