@@ -27,6 +27,10 @@ var Node = /** @class */ (function () {
     Node.prototype.get_parent_node_identifier = function () {
         return this.parent_node;
     };
+    Node.prototype.add_relation_without_node = function (relation, totalItems) {
+        this.children.push(relation);
+        this.propagate_children_count(totalItems);
+    };
     // This function adds a child node to this node.
     // The parent node is set upon creation
     // This method does not propagate the new information in the node. Needed when replacing an old node for multiple new nodes.
@@ -37,17 +41,31 @@ var Node = /** @class */ (function () {
     };
     // Add a child node to this node and propagate the new information.
     Node.prototype.add_child = function (childRelation, node, value) {
+        this.calculate_propagation(node);
         this.add_child_no_propagation(childRelation, node, value);
     };
     Node.prototype.add_child_with_relation = function (relation, node) {
+        this.calculate_propagation(node);
         this.add_child_no_propagation_with_relation(relation, node);
     };
     Node.prototype.add_child_no_propagation_with_relation = function (relation, childNode) {
         this.children.push(relation);
         childNode.set_parent_node(this);
     };
+    Node.prototype.calculate_propagation = function (node) {
+        var found = false;
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+            var relation = _a[_i];
+            if (relation.identifier.nodeId === node.get_node_id()) {
+                found = true;
+            }
+        }
+        if (!found) {
+            this.set_remainingItems(this.get_remainingItems() + node.get_remainingItems());
+        }
+    };
     // Return the total amount of children under this node.
-    Node.prototype.get_total_member_count = function () {
+    Node.prototype.get_remainingItems = function () {
         return this.remainingItems;
     };
     Node.prototype.set_remainingItems = function (count) {
@@ -57,7 +75,7 @@ var Node = /** @class */ (function () {
         var newcount = 0;
         for (var _i = 0, _a = this.get_children_objects(); _i < _a.length; _i++) {
             var childNode = _a[_i];
-            newcount += childNode.get_total_member_count();
+            newcount += childNode.get_remainingItems();
         }
         newcount += this.get_members().length;
         this.set_remainingItems(newcount);
@@ -239,7 +257,7 @@ var Node = /** @class */ (function () {
     Node.prototype.copy_info = function (othernode) {
         this.set_children(othernode.get_children());
         this.set_members(othernode.get_members());
-        this.set_remainingItems(othernode.get_total_member_count());
+        this.set_remainingItems(othernode.get_remainingItems());
     };
     Node.prototype.get_only_child_with_relation = function (childRelation) {
         var children = this.get_children_with_relation(childRelation);

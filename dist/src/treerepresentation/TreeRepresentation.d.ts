@@ -2,6 +2,7 @@ import { Tree } from '../Tree/Tree';
 import { Cache } from "../Cache/Cache";
 import { Member } from "../DataObjects/Member";
 import { NodeIO } from '../IO/NodeIO';
+import { Node } from '../Node/Node';
 export declare abstract class TreeRepresentation {
     tree: Tree;
     sourceDirectory: string;
@@ -15,6 +16,7 @@ export declare abstract class TreeRepresentation {
      */
     addData(representation: any, data: any, dataRepresentation?: any): void;
     searchData(value: any): Member[] | null;
+    searchNode(value: any): Node[];
     /**
      * Indicate finished adding data.
      * Cache can be flushed.

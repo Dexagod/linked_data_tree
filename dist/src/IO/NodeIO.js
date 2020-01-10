@@ -50,7 +50,7 @@ var NodeIO = /** @class */ (function () {
     NodeIO.prototype.write_node = function (node) {
         var location = this.getNodeLocation(node.get_node_id());
         var _a = this.encode_node(node), encodedNode = _a[0], encodedMembers = _a[1], encodedMemberMetadata = _a[2];
-        var wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_total_member_count()); // TODO:: fix for correct amount of total items?
+        var wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()); // TODO:: fix for correct amount of total items?
         var JSONSTRING = JSON.stringify(wrapper, function (key, value) {
             return (key == 'fc') ? undefined : value;
         });
@@ -67,7 +67,7 @@ var NodeIO = /** @class */ (function () {
     NodeIO.prototype.writeTreeRoot = function (node, tree) {
         var location = this.getNodeLocation(node.get_node_id());
         var _a = this.encode_node(node), encodedNode = _a[0], encodedMembers = _a[1], encodedMemberMetadata = _a[2];
-        var wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_total_member_count()); // TODO:: fix for correct amount of total items?
+        var wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()); // TODO:: fix for correct amount of total items?
         var treeMetadata = [tree.max_fragment_size, tree.node_count, tree.options];
         wrapper["treeMetadata"] = treeMetadata;
         var JSONSTRING = JSON.stringify(wrapper, function (key, value) {
@@ -81,7 +81,7 @@ var NodeIO = /** @class */ (function () {
         return wrapper;
     };
     NodeIO.prototype.readTree = function (prototypeObject) {
-        var nodeId = 0;
+        var nodeId = this.dataFolder + "node0.jsonld";
         var location = this.getNodeLocation(nodeId);
         var input_string = fs.readFileSync(location, { encoding: 'utf-8' });
         var wrapper = JSON.parse(input_string);
@@ -185,7 +185,7 @@ var NodeIO = /** @class */ (function () {
         return node;
     };
     NodeIO.prototype.encode_member = function (member) {
-        return [member.contents, this.encode_tdo_value(member.representation)];
+        return [member.contents, this.encode_tdo_value(member.representation), member.size];
     };
     NodeIO.prototype.decode_member = function (member) {
         Object.setPrototypeOf(member, Member_1.Member.prototype);
@@ -196,38 +196,44 @@ var NodeIO = /** @class */ (function () {
     };
     NodeIO.prototype.encode_relation = function (relation) {
         // TODO:: set shacl path
+        if (relation.path === null) {
+            relation.path = this.shaclPath;
+        }
         return {
             "@type": this.relationToString(relation.type),
-            "tree:node": this.getNodeIdFromIdentifier(relation.identifier.nodeId),
-            "shacl:path": this.shaclPath,
+            "tree:node": { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
+            "shacl:path": relation.path,
             "value": this.encode_node_value(relation.value),
         };
     };
     NodeIO.prototype.decode_relation = function (childRelationObject) {
         // TODO:: process shacl path
         var relationType = this.stringToRelation(childRelationObject["@type"].substring(5));
-        var relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"], this.decode_node_value(childRelationObject["value"]));
+        var relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]["@id"], this.decode_node_value(childRelationObject["value"]));
         var relationValue = this.decode_node_value(childRelationObject["value"]);
-        return new Relation_1.Relation(relationType, relationValue, relationIdentifier);
+        var shaclPath = childRelationObject["shacl:path"];
+        return new Relation_1.Relation(relationType, relationValue, relationIdentifier, shaclPath);
     };
     NodeIO.prototype.getCollectionId = function () {
-        return this.getNodeIdFromIdentifier(0) + "#collection";
+        return this.getRootNodeIdentifier() + "#Collection";
     };
     NodeIO.prototype.getNodeLocation = function (nodeId) {
-        return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld";
+        return this.sourceDirectory + nodeId;
+        // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
         // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     };
     NodeIO.prototype.getNodeIdFromIdentifier = function (nodeId) {
-        return "/" + this.dataFolder + "node" + nodeId.toString() + ".jsonld";
+        return nodeId;
+        // return "/" + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     };
     NodeIO.prototype.retrieveNodeIdentifier = function (str, value) {
         // let nodeId = str.replace(this.sourceDirectory + this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
-        var nodeId = str.replace(this.dataFolder + "node", "").replace("/", "").replace(".jsonld", "");
+        var nodeId = str; //str.replace(this.dataFolder + "node", "").replace("/","").replace(".jsonld", "");
         if (nodeId === null) {
             throw new Error("requesting node with null id");
         }
         else {
-            return new Identifier_1.Identifier(parseInt(nodeId), value);
+            return new Identifier_1.Identifier(nodeId, value);
         }
     };
     NodeIO.prototype.relationToString = function (relation) { return "tree:" + relation; };
@@ -246,6 +252,9 @@ var NodeIO = /** @class */ (function () {
     };
     NodeIO.prototype.decode_tdo_value = function (a) {
         return a;
+    };
+    NodeIO.prototype.getRootNodeIdentifier = function () {
+        return "/" + this.dataFolder + "node0.jsonld";
     };
     return NodeIO;
 }());

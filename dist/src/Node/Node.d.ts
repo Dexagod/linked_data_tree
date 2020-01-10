@@ -13,13 +13,15 @@ export declare class Node {
     remainingItems: number;
     constructor(value: any, parent_node: Node | null, tree: Tree);
     get_identifier(): Identifier;
-    get_node_id(): number;
+    get_node_id(): string;
     get_parent_node_identifier(): Identifier | null;
+    add_relation_without_node(relation: Relation, totalItems: number): void;
     add_child_no_propagation(childRelation: ChildRelation, childNode: Node, value: any): void;
     add_child(childRelation: ChildRelation, node: Node, value: any): void;
     add_child_with_relation(relation: Relation, node: Node): void;
     add_child_no_propagation_with_relation(relation: Relation, childNode: Node): void;
-    get_total_member_count(): number;
+    calculate_propagation(node: Node): void;
+    get_remainingItems(): number;
     set_remainingItems(count: number): void;
     fix_total_member_count(): void;
     has_child_relations(): boolean;
@@ -30,7 +32,7 @@ export declare class Node {
     swapChildrenWithRelation(oldChild: Node, relations: Array<Relation>, newChildren: Array<Node>): void;
     clear(): void;
     clearChildren(): void;
-    get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier> | null;
+    get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier>;
     get_children_with_relation(childRelation: ChildRelation): Array<Node> | null;
     update_child(oldIdentifier: Identifier, newIdentifier: Identifier): void;
     get_children_objects(): Array<Node>;

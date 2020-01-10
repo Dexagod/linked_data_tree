@@ -3,9 +3,9 @@ import { NodeIO } from "../IO/NodeIO";
 import { Identifier } from "../Identifier";
 import { Tree } from '../Tree/Tree';
 export declare class Cache {
-    cache: Map<number, Node>;
+    cache: Map<string, Node>;
     last_used_cache_counter: number;
-    cache_hits: Map<number, number>;
+    cache_hits: Map<string, number>;
     nodeLocationFolder: string;
     max_cache_size: number;
     sourceDirectory: string;
@@ -28,17 +28,17 @@ export declare class Cache {
      * cache counter to keep track of lru items.
      */
     assign_cache_counter(): number;
-    get_node_by_id(nodeId: number): Node;
+    get_node_by_id(nodeId: string): Node;
     get_node(identifier: Identifier): Node;
     list_nodes(): Array<Node>;
     delete_node(node: Node): void;
-    delete_node_file_by_id(nodeId: number): void;
-    import_node(nodeId: number): Node;
-    read_node_from_file(nodeId: number): Node;
+    delete_node_file_by_id(nodeId: string): void;
+    import_node(nodeId: string): Node;
+    read_node_from_file(nodeId: string): Node;
     write_node_to_file(node: Node): void;
-    write_node_batch_to_file(index_array: Array<number>): void;
+    write_node_batch_to_file(index_array: Array<string>): void;
     clean_cache(): void;
     flush_cache(tree: Tree): any;
-    getNodeFromCache(nodeId: number): Node;
-    getCacheHits(nodeId: number): number;
+    getNodeFromCache(nodeId: string): Node;
+    getCacheHits(nodeId: string): number;
 }

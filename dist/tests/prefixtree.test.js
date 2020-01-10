@@ -7,7 +7,7 @@ var fs = require("fs");
 // const normalizeString = require('stringnormalizer');
 var sourceDirectory = "tests/testdata/";
 var sourceFile = "tests/straatnamen20k.txt";
-var maxFragmentSize = 500;
+var maxFragmentSize = 30;
 var maxCachedFragments = 10000;
 var prefixTreeStringDataLocation = "prefix_streets/";
 var prefixTreeStringLocation = "prefix_collections/";
@@ -65,6 +65,7 @@ describe('Prefix Tree tests', function () {
         for (var _i = 0, readLines_2 = readLines; _i < readLines_2.length; _i++) {
             var line = readLines_2[_i];
             var representations = newtree.searchData(line);
+            chai_1.expect(newtree.searchNode(line).length).gte(1);
             if (representations === null) {
                 console.error("null prepresentations");
                 chai_1.expect(false);
@@ -72,19 +73,6 @@ describe('Prefix Tree tests', function () {
             else {
                 chai_1.expect(representations.map(function (e) { return e.get_representation(); }).indexOf(line)).to.not.equal(-1);
             }
-            // let normalizedline = normalizeString(line)
-            //   if (normalizedline !== null){
-            //   let spaceSeparatedRepresentations = normalizedline.split(" ")
-            //   for (let i = 0; i < spaceSeparatedRepresentations.length; i++){
-            //     let repSubString = spaceSeparatedRepresentations.slice(i).join(" ")
-            //     let representations = newtree.searchData(repSubString)
-            //     if (representations === null) { console.error("null prepresentations"); expect(false) } else {
-            //       if (representations.map(e => e.get_representation()).indexOf(repSubString) === -1 ) {
-            //         console.log(line, repSubString)
-            //       }
-            //       expect( representations.map(e => e.get_representation()).indexOf(repSubString) ).to.not.equal( -1 ) }
-            //   }
-            // }
         }
     });
     it('checking total children count in each node to be the sum of the child items ', function () {
@@ -93,15 +81,16 @@ describe('Prefix Tree tests', function () {
         }
         var rootNode = newtree.getTreeObject().get_root_node();
         // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
-        checkItems(rootNode);
+        checkItems(rootNode, 0);
     });
 });
-function checkItems(currentNode) {
+var rootNodeDepth = null;
+function checkItems(currentNode, depth) {
     var totalItems = 0;
     for (var _i = 0, _a = currentNode.get_children_objects(); _i < _a.length; _i++) {
         var child = _a[_i];
-        totalItems += child.get_total_member_count();
-        checkItems(child);
+        totalItems += child.get_remainingItems();
+        checkItems(child, depth + 1);
     }
     totalItems += currentNode.get_members().length;
     var childRelationArray = currentNode.children;
@@ -112,21 +101,6 @@ function checkItems(currentNode) {
         chai_1.expect(relation.type).not.null;
         chai_1.expect(relation.value).not.null;
     }
-    chai_1.expect(totalItems).to.equal(currentNode.get_total_member_count());
+    chai_1.expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
-// function checkItems(currentNode : Node){
-//   let totalItems = 0
-//     for ( let child of currentNode.get_children_objects() ){
-//       checkItems(child)
-//       totalItems += child.get_total_member_count() + 1;
-//     }
-//     let childRelationArray = currentNode.children;
-//     for (let relation of childRelationArray){
-//       expect(relation).not.null
-//       expect(relation.identifier).not.null
-//       expect(relation.type).not.null
-//       expect(relation.value).not.null
-//     }
-//     expect(totalItems).to.equal(currentNode.get_total_member_count());
-// }
 //# sourceMappingURL=prefixtree.test.js.map

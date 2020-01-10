@@ -16,9 +16,9 @@ export declare class NodeIO {
      */
     constructor(sourceDirectory: string, dataFolder: string, shaclPath: any);
     write_node_batch(nodeArray: Array<Node>): void;
-    delete_node(nodeId: number): void;
+    delete_node(nodeId: string): void;
     write_node(node: Node): void;
-    read_node(nodeId: number, fc: Cache): any;
+    read_node(nodeId: string, fc: Cache): any;
     writeTreeRoot(node: Node, tree: Tree): any;
     readTree(prototypeObject: any): any;
     encode_wrapper(encodedNode: any, encodedMembers: any, encodedMembersMetadata: any, totalItems?: number): {
@@ -49,14 +49,16 @@ export declare class NodeIO {
     decode_member(member: any): Member;
     encode_relation(relation: Relation): {
         "@type": string;
-        "tree:node": string;
-        "shacl:path": any;
+        "tree:node": {
+            "@id": string;
+        };
+        "shacl:path": string | null;
         "value": any;
     };
     decode_relation(childRelationObject: any): Relation;
-    private getCollectionId;
-    getNodeLocation(nodeId: number): string;
-    getNodeIdFromIdentifier(nodeId: number): string;
+    getCollectionId(): string;
+    getNodeLocation(nodeId: string): string;
+    getNodeIdFromIdentifier(nodeId: string): string;
     retrieveNodeIdentifier(str: string, value: any): Identifier;
     relationToString(relation: ChildRelation): string;
     stringToRelation(relationString: string): ChildRelation;
@@ -64,4 +66,5 @@ export declare class NodeIO {
     encode_tdo_value(a: any): any;
     decode_node_value(a: any): any;
     decode_tdo_value(a: any): any;
+    getRootNodeIdentifier(): string;
 }

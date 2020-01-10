@@ -6,10 +6,12 @@ var Member = /** @class */ (function () {
      * @param {string} representation
      * @param {any} contents
      */
-    function Member(representation, contents) {
+    function Member(representation, contents, size) {
         if (contents === void 0) { contents = null; }
+        if (size === void 0) { size = 1; }
         this.representation = representation;
         this.contents = contents;
+        this.size = size;
     }
     /**
      * returns the representation of this data object.

@@ -121,6 +121,16 @@ export class Node {
       return this.children;
     }
 
+    getRelationsForChild(childIdentifier: Identifier){
+        let relationList = []
+        for (let relation of this.children){
+            if(relation.identifier.nodeId === childIdentifier.nodeId){
+                relationList.push(relation);
+            }
+        }
+        return relationList;
+    }
+
     // Removes a child node from this node
     remove_child(node: Node) {
       let newRelations = new Array<Relation>();

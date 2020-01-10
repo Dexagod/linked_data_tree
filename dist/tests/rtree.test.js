@@ -15,7 +15,7 @@ var N3 = require('n3');
 var fs = require("fs");
 var sourceDirectory = "tests/testdata/";
 var sourceFile = "tests/straatnamen20k.txt";
-var maxFragmentSize = 500;
+var maxFragmentSize = 50;
 var maxCachedFragments = 10000;
 var RTreeStringDataLocation = "rtree_streets/";
 var RTreeStringLocation = "rtree_collections/";
@@ -94,15 +94,24 @@ describe('RTree tests', function () {
         }
         var rootNode = newtree.getTreeObject().get_root_node();
         // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
-        checkItems(rootNode);
+        checkItems(rootNode, 0);
     });
 });
-function checkItems(currentNode) {
+var rootNodeDepth = null;
+function checkItems(currentNode, depth) {
     var totalItems = 0;
+    if (currentNode.has_child_relations() === false) {
+        if (rootNodeDepth === null) {
+            rootNodeDepth = depth;
+        }
+        else {
+            chai_1.expect(rootNodeDepth).equals(depth);
+        }
+    }
     for (var _i = 0, _a = currentNode.get_children_objects(); _i < _a.length; _i++) {
         var child = _a[_i];
-        totalItems += child.get_total_member_count();
-        checkItems(child);
+        totalItems += child.get_remainingItems();
+        checkItems(child, depth + 1);
     }
     totalItems += currentNode.get_members().length;
     var childRelationArray = currentNode.children;
@@ -113,13 +122,13 @@ function checkItems(currentNode) {
         chai_1.expect(relation.type).not.null;
         chai_1.expect(relation.value).not.null;
     }
-    chai_1.expect(totalItems).to.equal(currentNode.get_total_member_count());
+    chai_1.expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
 // function checkItems(currentNode : Node){
 //   let totalItems = 0
 //     for ( let child of currentNode.get_children_objects() ){
 //       checkItems(child)
-//       totalItems += child.get_total_member_count() + 1;
+//       totalItems += child.get_remainingItems() + 1;
 //     }
 //     let childRelationArray = currentNode.children;
 //     for (let relation of childRelationArray){
@@ -128,6 +137,6 @@ function checkItems(currentNode) {
 //       expect(relation.type).not.null
 //       expect(relation.value).not.null
 //     }
-//     expect(totalItems).to.equal(currentNode.get_total_member_count());
+//     expect(totalItems).to.equal(currentNode.get_remainingItems());
 // }
 //# sourceMappingURL=rtree.test.js.map

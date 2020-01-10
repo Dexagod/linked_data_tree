@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Node_1 = require("../Node/Node");
 var Identifier_1 = require("../Identifier");
+var jsonld = require("jsonld");
 var Tree = /** @class */ (function () {
     /**
      * Representation of a patricia tree.
@@ -25,7 +26,10 @@ var Tree = /** @class */ (function () {
      * @param {Node} node
      */
     Tree.prototype.provide_node_id = function () {
-        return this.node_count++;
+        var id = "/" + this.cache.dataFolder + "node" + this.node_count.toString() + ".jsonld";
+        this.node_count++;
+        return id;
+        // return this.node_count++;
     };
     /**
      * Returns the tree root node.
@@ -77,6 +81,12 @@ var Tree = /** @class */ (function () {
     };
     Tree.prototype.set_root_node_identifier = function (identifier) {
         this.root_node_identifier = identifier;
+    };
+    Tree.prototype.checkNodeSplit = function (node) {
+        if (node.get_members().length > this.max_fragment_size) {
+            return true;
+        }
+        return false;
     };
     return Tree;
 }());

@@ -62,7 +62,7 @@ var Cache = /** @class */ (function () {
     Cache.prototype.list_nodes = function () {
         var fc = this;
         var values = Object.keys(this.cache).map(function (key) {
-            return fc.getNodeFromCache(parseInt(key));
+            return fc.getNodeFromCache(key);
         });
         return values;
     };
@@ -104,7 +104,7 @@ var Cache = /** @class */ (function () {
         this.cache_cleans += 1;
         var cache_values = new Array();
         for (var key in this.cache)
-            cache_values.push([parseInt(key), this.getCacheHits(parseInt(key))]);
+            cache_values.push([key, this.getCacheHits(key)]);
         cache_values.sort(function (a, b) {
             var x = a[1];
             var y = b[1];
@@ -116,11 +116,16 @@ var Cache = /** @class */ (function () {
         this.write_node_batch_to_file(mapped_index);
     };
     Cache.prototype.flush_cache = function (tree) {
+        var rootNodeIdentifier = tree.get_root_node_identifier();
         var keyArray = Array.from(this.cache.keys());
-        keyArray.splice(keyArray.indexOf(0), 1); // remove rootNode from keys
-        var rootNode = this.cache.get(0);
+        if (rootNodeIdentifier != null) {
+            keyArray.splice(keyArray.indexOf(rootNodeIdentifier.nodeId), 1); // remove rootNode from keys
+        }
+        var rootNode = tree.get_root_node();
         this.write_node_batch_to_file(keyArray);
-        this.cache.delete(0);
+        if (rootNodeIdentifier != null) {
+            this.cache.delete(rootNodeIdentifier.nodeId);
+        }
         if (rootNode === undefined) {
             throw new Error("Cannot write rootnode to file since rootnode is undefined.");
         }

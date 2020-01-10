@@ -6,9 +6,12 @@ export declare class RTree extends Tree {
     private recursiveAddition;
     addMemberToNode(currentNode: Node, member: Member): Node;
     searchData(value: any): Member[];
+    searchNode(value: any): Array<Node>;
     private _search_data_recursive;
     private findClosestBoundingBoxIndex;
     private splitNode;
+    private splitLeafNode;
+    private splitInnerNode;
     private createBoundingBox;
     private bboxToGeoJSON;
     private expandBoundingBox;

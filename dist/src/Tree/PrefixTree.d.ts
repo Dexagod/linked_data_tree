@@ -10,10 +10,11 @@ export declare class PrefixTree extends Tree {
     private recursiveAddition;
     private splitNode;
     /**
-     * The given dataobject is searched in the tree.
-     * For testing and debugging purposes.
-     * @param {DataObject} searched_member
-     */
+    * The given dataobject is searched in the tree.
+    * For testing and debugging purposes.
+    * @param {DataObject} searched_member
+    */
     searchData(value: any): Member[];
+    searchNode(value: any): Node[];
     private _search_data_recursive;
 }

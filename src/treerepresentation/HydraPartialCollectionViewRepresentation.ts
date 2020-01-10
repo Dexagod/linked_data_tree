@@ -1,4 +1,4 @@
-import { PrefixTree } from '../Tree/PrefixTree';
+
 import { TreeRepresentation } from './TreeRepresentation';
 import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';

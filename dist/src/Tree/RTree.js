@@ -67,37 +67,57 @@ var RTree = /** @class */ (function (_super) {
             currentNode.identifier.value = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
         }
         currentNode.add_data(member);
-        if (currentNode.get_members().length <= this.max_fragment_size) {
-            return currentNode;
+        if (this.checkNodeSplit(currentNode)) {
+            return this.splitNode(currentNode, member);
         }
         else {
-            return this.splitNode(currentNode, member);
+            return currentNode;
         }
     };
     RTree.prototype.searchData = function (value) {
-        return this._search_data_recursive(this.get_root_node(), value);
+        return this._search_data_recursive(this.get_root_node(), value)[0];
+    };
+    RTree.prototype.searchNode = function (value) {
+        var nodes = this._search_data_recursive(this.get_root_node(), value)[1];
+        var returnNodes = Array();
+        for (var _i = 0, nodes_1 = nodes; _i < nodes_1.length; _i++) {
+            var node = nodes_1[_i];
+            for (var _a = 0, _b = node.get_members(); _a < _b.length; _a++) {
+                var member = _b[_a];
+                if (this.isContained(member.get_representation(), value)) {
+                    returnNodes.push(node);
+                    break;
+                }
+            }
+        }
+        return returnNodes;
     };
     RTree.prototype._search_data_recursive = function (currentNode, area) {
         var _this = this;
         var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
-        var retultingMembers = new Array();
+        var resultingMembers = new Array();
+        var resultingNodes = new Array();
         if (childrenIdentifiers !== null) {
             var containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area);
             if (containingChildren.length === 0) {
-                return [];
+                resultingNodes.concat(currentNode);
+                return [[], resultingNodes];
             }
             else {
                 containingChildren.forEach(function (child) {
-                    retultingMembers = retultingMembers.concat(_this._search_data_recursive(child, area));
+                    var _a = _this._search_data_recursive(child, area), resMems = _a[0], resNodes = _a[1];
+                    resultingMembers = resultingMembers.concat(resMems);
+                    resultingNodes = resultingNodes.concat(resNodes);
                 });
             }
         }
         currentNode.members.forEach(function (tdo) {
             if (_this.isContained(tdo.get_representation(), area)) {
-                retultingMembers.push(tdo);
+                resultingMembers.push(tdo);
             }
         });
-        return retultingMembers;
+        resultingNodes.push(currentNode);
+        return [resultingMembers, resultingNodes];
     };
     RTree.prototype.findClosestBoundingBoxIndex = function (currentNode, dataWKTstring) {
         var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
@@ -119,8 +139,8 @@ var RTree = /** @class */ (function (_super) {
                 throw new Error("undefined bounding box for the given child node value");
             }
             var expandedBoundingBox_1 = this.expandBoundingBox(dataBoundingBox, childBoundingBox);
-            var expandedBboxSize_1 = this.getBBoxSize(expandedBoundingBox_1);
-            var sizeDifference = expandedBboxSize_1 - this.getBBoxSize(childBoundingBox);
+            var expandedBboxSize = this.getBBoxSize(expandedBoundingBox_1);
+            var sizeDifference = expandedBboxSize - this.getBBoxSize(childBoundingBox);
             if (sizeDifference < smallestSizeDifference) {
                 smallestBoundingBox = expandedBoundingBox_1;
                 smallestSizeDifference = sizeDifference;
@@ -129,10 +149,8 @@ var RTree = /** @class */ (function (_super) {
         }
         var currentNodeBBox = currentNode.get_identifier().value.bbox();
         var expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, currentNodeBBox);
-        var expandedBboxSize = this.getBBoxSize(expandedBoundingBox);
-        var currentNodeAdditionSizeDifference = expandedBboxSize - this.getBBoxSize(currentNodeBBox);
-        if (smallestBoundingBox === null || currentNodeAdditionSizeDifference < smallestSizeDifference) {
-            return currentNode;
+        if (smallestBoundingBox === null) {
+            throw new Error("couldnt split node");
         }
         else {
             var oldIdentifier = childrenIdentifiers[smallestBoundingBoxIndex];
@@ -143,160 +161,60 @@ var RTree = /** @class */ (function (_super) {
             node.identifier.value = newValue;
             return node;
         }
-        //todo : update child value, update child value in the parent identifier for the child
     };
     RTree.prototype.splitNode = function (node, addedMember) {
-        var _this = this;
         var childrenIdentifiers = node.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
-        var parent = null;
-        var splitNode1 = null;
-        var splitNode2 = null;
         if (childrenIdentifiers === null || childrenIdentifiers.length === 0) {
             // We are splitting a leaf node, and have to devide the Members
-            var entryBboxes = node.get_members().map(function (e) { return e.get_representation().bbox(); });
-            var splitAxis_1 = this.chooseAxis(entryBboxes, node.get_identifier().value.bbox()); // 0 == split on X axis, 1 == split on Y axis
-            if (splitAxis_1 !== 0 && splitAxis_1 !== 1) {
-                throw new Error("invalid axis passed to the distribute function");
-            }
-            var items = node.get_members();
-            items.sort(function (a, b) { return (_this.getBBox(a.get_representation())[splitAxis_1] > _this.getBBox(b.get_representation())[splitAxis_1]) ? 1 : -1; });
-            var node2items = items.splice(Math.floor(items.length / 2), items.length);
-            if (node.has_parent_node()) {
-                parent = node.get_parent_node();
-                var node1value = this.createBoundingBox(items.map(function (e) { return _this.getBBox(e.get_representation()); }));
-                var node2value = this.createBoundingBox(node2items.map(function (e) { return _this.getBBox(e.get_representation()); }));
-                splitNode1 = new Node_1.Node(node1value, parent, this);
-                splitNode2 = new Node_1.Node(node2value, parent, this);
-                splitNode1.set_members(items);
-                splitNode2.set_members(node2items);
-                splitNode1.fix_total_member_count();
-                splitNode2.fix_total_member_count();
-                var relationsList = [ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, ChildRelation_1.ChildRelation.GeospatiallyContainsRelation];
-                var newChildrenList = [splitNode1, splitNode2];
-                var valuesList = [node1value, node2value];
-                parent.swapChildren(node, relationsList, newChildrenList, valuesList);
-                this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
-            }
-            else {
-                // node is the root node of the tree (and since no children also the only node in the tree)
-                var node1value = this.createBoundingBox(items.map(function (e) { return _this.getBBox(e.get_representation()); }));
-                var node2value = this.createBoundingBox(node2items.map(function (e) { return _this.getBBox(e.get_representation()); }));
-                splitNode1 = new Node_1.Node(node1value, node, this);
-                splitNode2 = new Node_1.Node(node2value, node, this);
-                splitNode1.set_members(items);
-                splitNode2.set_members(node2items);
-                node.deleteMembers();
-                splitNode1.fix_total_member_count();
-                splitNode2.fix_total_member_count();
-                node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value);
-                node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value);
-                this.set_root_node_identifier(node.get_identifier());
-                parent = node;
-            }
+            return this.splitLeafNode(node, addedMember);
         }
         else {
             // We are splitting an internal node, and have to devide the children
-            var entryBboxes = childrenIdentifiers.map(function (e) { return e.value.bbox(); });
-            var membersEntryBboxes = node.get_members().map(function (e) { return e.get_representation().bbox(); });
-            var totalEntryBBoxes = entryBboxes.concat(membersEntryBboxes);
-            var splitAxis_2 = this.chooseAxis(totalEntryBBoxes, node.get_identifier().value.bbox()); // 0 == split on X axis, 1 == split on Y axis
-            var node1members = new Array();
-            var node2members = new Array();
-            var node1childrenIdentifiers = new Array();
-            var node2childrenIdentifiers = new Array();
-            if (splitAxis_2 !== 0 && splitAxis_2 !== 1) {
-                throw new Error("invalid axis passed to the distribute function");
-            }
-            var items = totalEntryBBoxes;
-            items = items.sort(function (a, b) { return (a[splitAxis_2] > b[splitAxis_2]) ? 1 : -1; });
-            var splitValue = items[Math.floor(items.length / 2)][splitAxis_2];
-            var node1bboxes = [];
-            var node2bboxes = [];
-            for (var _i = 0, _a = node.get_members(); _i < _a.length; _i++) {
-                var member = _a[_i];
-                if (member.get_representation().bbox()[splitAxis_2] <= splitValue) {
-                    node1members.push(member);
-                    node1bboxes.push(member.get_representation().bbox());
-                }
-                else {
-                    node2members.push(member);
-                    node2bboxes.push(member.get_representation().bbox());
-                }
-            }
-            for (var _b = 0, childrenIdentifiers_1 = childrenIdentifiers; _b < childrenIdentifiers_1.length; _b++) {
-                var childIdentifier = childrenIdentifiers_1[_b];
-                if (childIdentifier.value.bbox()[splitAxis_2] <= splitValue) {
-                    node1childrenIdentifiers.push(childIdentifier);
-                    node1bboxes.push(childIdentifier.value.bbox());
-                }
-                else {
-                    node2childrenIdentifiers.push(childIdentifier);
-                    node2bboxes.push(childIdentifier.value.bbox());
-                }
-            }
-            var node1value = this.createBoundingBox(node1bboxes);
-            var node2value = this.createBoundingBox(node2bboxes);
-            if (node.has_parent_node()) {
-                parent = node.get_parent_node();
-                splitNode1 = new Node_1.Node(node1value, null, this);
-                splitNode2 = new Node_1.Node(node2value, null, this);
-                for (var _c = 0, node1childrenIdentifiers_1 = node1childrenIdentifiers; _c < node1childrenIdentifiers_1.length; _c++) {
-                    var identifier = node1childrenIdentifiers_1[_c];
-                    splitNode1.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
-                }
-                for (var _d = 0, node1members_1 = node1members; _d < node1members_1.length; _d++) {
-                    var member = node1members_1[_d];
-                    splitNode1.add_data(member);
-                }
-                for (var _e = 0, node2childrenIdentifiers_1 = node2childrenIdentifiers; _e < node2childrenIdentifiers_1.length; _e++) {
-                    var identifier = node2childrenIdentifiers_1[_e];
-                    splitNode2.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
-                }
-                for (var _f = 0, node2members_1 = node2members; _f < node2members_1.length; _f++) {
-                    var member = node2members_1[_f];
-                    splitNode2.add_data(member);
-                }
-                splitNode1.fix_total_member_count();
-                splitNode2.fix_total_member_count();
-                var relationsList = [ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, ChildRelation_1.ChildRelation.GeospatiallyContainsRelation];
-                var newChildrenList = [splitNode1, splitNode2];
-                var valuesList = [node1value, node2value];
-                parent.swapChildren(node, relationsList, newChildrenList, valuesList);
-                this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
-            }
-            else {
-                node.clear();
-                var nodeValue = this.createBoundingBox([node1value.bbox(), node2value.bbox()]);
-                node.identifier.value = nodeValue;
-                splitNode1 = new Node_1.Node(node1value, null, this);
-                splitNode2 = new Node_1.Node(node2value, null, this);
-                for (var _g = 0, node1childrenIdentifiers_2 = node1childrenIdentifiers; _g < node1childrenIdentifiers_2.length; _g++) {
-                    var identifier = node1childrenIdentifiers_2[_g];
-                    splitNode1.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
-                }
-                for (var _h = 0, node1members_2 = node1members; _h < node1members_2.length; _h++) {
-                    var member = node1members_2[_h];
-                    splitNode1.add_data(member);
-                }
-                for (var _j = 0, node2childrenIdentifiers_2 = node2childrenIdentifiers; _j < node2childrenIdentifiers_2.length; _j++) {
-                    var identifier = node2childrenIdentifiers_2[_j];
-                    splitNode2.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
-                }
-                for (var _k = 0, node2members_2 = node2members; _k < node2members_2.length; _k++) {
-                    var member = node2members_2[_k];
-                    splitNode2.add_data(member);
-                }
-                splitNode1.fix_total_member_count();
-                splitNode2.fix_total_member_count();
-                node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value);
-                node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value);
-                this.set_root_node_identifier(node.get_identifier());
-                parent = node;
-            }
+            return this.splitInnerNode(node);
         }
-        var parentChildren = parent.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
-        parent.fix_total_member_count();
-        if (parentChildren != null && parentChildren.length >= this.max_fragment_size) {
+    };
+    RTree.prototype.splitLeafNode = function (node, addedMember) {
+        var _this = this;
+        var parent = null;
+        var splitNode1 = null;
+        var splitNode2 = null;
+        var entryBboxes = node.get_members().map(function (e) { return e.get_representation().bbox(); });
+        var splitAxis = this.chooseAxis(entryBboxes, node.get_identifier().value.bbox()); // 0 == split on X axis, 1 == split on Y axis
+        if (splitAxis !== 0 && splitAxis !== 1) {
+            throw new Error("invalid axis passed to the distribute function");
+        }
+        var items = node.get_members();
+        items.sort(function (a, b) { return (_this.getBBox(a.get_representation())[splitAxis] > _this.getBBox(b.get_representation())[splitAxis]) ? 1 : -1; });
+        var node2items = items.splice(Math.floor(items.length / 2), items.length);
+        parent = node;
+        if (node.has_parent_node()) {
+            parent = node.get_parent_node();
+        }
+        var node1value = this.createBoundingBox(items.map(function (e) { return _this.getBBox(e.get_representation()); }));
+        var node2value = this.createBoundingBox(node2items.map(function (e) { return _this.getBBox(e.get_representation()); }));
+        splitNode1 = new Node_1.Node(node1value, parent, this);
+        splitNode2 = new Node_1.Node(node2value, parent, this);
+        splitNode1.set_members(items);
+        splitNode2.set_members(node2items);
+        splitNode1.fix_total_member_count();
+        splitNode2.fix_total_member_count();
+        if (node.has_parent_node()) {
+            var relationsList = [ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, ChildRelation_1.ChildRelation.GeospatiallyContainsRelation];
+            var newChildrenList = [splitNode1, splitNode2];
+            var valuesList = [node1value, node2value];
+            parent.swapChildren(node, relationsList, newChildrenList, valuesList);
+            parent.fix_total_member_count();
+            this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
+        }
+        else {
+            node.clear();
+            node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value);
+            node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value);
+            node.fix_total_member_count();
+            this.set_root_node_identifier(node.get_identifier());
+            parent = node;
+        }
+        if (parent.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation).length >= this.max_fragment_size) {
             this.splitNode(parent, null);
         }
         if (addedMember !== null) {
@@ -309,6 +227,99 @@ var RTree = /** @class */ (function (_super) {
             }
         }
         return node;
+    };
+    RTree.prototype.splitInnerNode = function (node) {
+        var parent = null;
+        var splitNode1 = null;
+        var splitNode2 = null;
+        var childrenIdentifiers = node.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
+        var totalEntryBBoxes = childrenIdentifiers.map(function (e) { return e.value.bbox(); });
+        // let membersEntryBboxes = node.get_members().map(e => e.get_representation().bbox())
+        // let totalEntryBBoxes = entryBboxes.concat(membersEntryBboxes)
+        var splitAxis = this.chooseAxis(totalEntryBBoxes, node.get_identifier().value.bbox()); // 0 == split on X axis, 1 == split on Y axis
+        var node1members = new Array();
+        var node2members = new Array();
+        var node1childrenIdentifiers = new Array();
+        var node2childrenIdentifiers = new Array();
+        if (splitAxis !== 0 && splitAxis !== 1) {
+            throw new Error("invalid axis passed to the distribute function");
+        }
+        var items = totalEntryBBoxes;
+        items = items.sort(function (a, b) { return (a[splitAxis] > b[splitAxis]) ? 1 : -1; });
+        var splitValue = items[Math.floor(items.length / 2)][splitAxis];
+        var node1bboxes = [];
+        var node2bboxes = [];
+        for (var _i = 0, _a = node.get_members(); _i < _a.length; _i++) {
+            var member = _a[_i];
+            if (member.get_representation().bbox()[splitAxis] <= splitValue) {
+                node1members.push(member);
+                node1bboxes.push(member.get_representation().bbox());
+            }
+            else {
+                node2members.push(member);
+                node2bboxes.push(member.get_representation().bbox());
+            }
+        }
+        for (var _b = 0, childrenIdentifiers_1 = childrenIdentifiers; _b < childrenIdentifiers_1.length; _b++) {
+            var childIdentifier = childrenIdentifiers_1[_b];
+            if (childIdentifier.value.bbox()[splitAxis] <= splitValue) {
+                node1childrenIdentifiers.push(childIdentifier);
+                node1bboxes.push(childIdentifier.value.bbox());
+            }
+            else {
+                node2childrenIdentifiers.push(childIdentifier);
+                node2bboxes.push(childIdentifier.value.bbox());
+            }
+        }
+        var node1value = this.createBoundingBox(node1bboxes);
+        var node2value = this.createBoundingBox(node2bboxes);
+        if (node.has_parent_node()) {
+            parent = node.get_parent_node();
+        }
+        else {
+            parent = node;
+            node.clear();
+            var nodeValue = this.createBoundingBox([node1value.bbox(), node2value.bbox()]);
+            node.identifier.value = nodeValue;
+        }
+        splitNode1 = new Node_1.Node(node1value, null, this);
+        splitNode2 = new Node_1.Node(node2value, null, this);
+        for (var _c = 0, node1childrenIdentifiers_1 = node1childrenIdentifiers; _c < node1childrenIdentifiers_1.length; _c++) {
+            var identifier = node1childrenIdentifiers_1[_c];
+            splitNode1.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
+        }
+        for (var _d = 0, node1members_1 = node1members; _d < node1members_1.length; _d++) {
+            var member = node1members_1[_d];
+            splitNode1.add_data(member);
+        }
+        for (var _e = 0, node2childrenIdentifiers_1 = node2childrenIdentifiers; _e < node2childrenIdentifiers_1.length; _e++) {
+            var identifier = node2childrenIdentifiers_1[_e];
+            splitNode2.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, this.get_cache().get_node(identifier), identifier.value);
+        }
+        for (var _f = 0, node2members_1 = node2members; _f < node2members_1.length; _f++) {
+            var member = node2members_1[_f];
+            splitNode2.add_data(member);
+        }
+        splitNode1.fix_total_member_count();
+        splitNode2.fix_total_member_count();
+        if (node.has_parent_node()) {
+            var relationsList = [ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, ChildRelation_1.ChildRelation.GeospatiallyContainsRelation];
+            var newChildrenList = [splitNode1, splitNode2];
+            var valuesList = [node1value, node2value];
+            parent.swapChildren(node, relationsList, newChildrenList, valuesList);
+            this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
+        }
+        else {
+            node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value);
+            node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value);
+            this.set_root_node_identifier(node.get_identifier());
+        }
+        parent.fix_total_member_count();
+        var parentChildren = parent.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
+        if (parentChildren != null && parentChildren.length >= this.max_fragment_size) {
+            this.splitNode(parent, null);
+        }
+        return parent;
     };
     RTree.prototype.createBoundingBox = function (bboxes) {
         var xmin = Math.min.apply(null, bboxes.map(function (e) { return e[0]; }));

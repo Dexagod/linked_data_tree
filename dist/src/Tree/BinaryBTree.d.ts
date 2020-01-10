@@ -25,5 +25,6 @@ export declare class BinaryBTree extends Tree {
     * @param {DataObject} searched_member
     */
     searchData(value: any): Member[];
+    searchNode(value: any): Node[];
     private _search_data_recursive;
 }

@@ -4,5 +4,6 @@ export declare class Relation {
     type: ChildRelation;
     value: any;
     identifier: Identifier;
-    constructor(type: ChildRelation, value: any, identifier: Identifier);
+    path: string | null;
+    constructor(type: ChildRelation, value: any, identifier: Identifier, path?: string | null);
 }

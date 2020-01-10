@@ -60,7 +60,7 @@ var BinaryBTree = /** @class */ (function (_super) {
         }
         if (member !== null) {
             currentNode.add_data(member);
-            if (currentNode.get_members().length > this.max_fragment_size) {
+            if (this.checkNodeSplit(currentNode)) {
                 return this.splitLeafNode(currentNode, interval, value);
             }
         }
@@ -244,7 +244,7 @@ var BinaryBTree = /** @class */ (function (_super) {
             this.set_root_node_identifier(node.get_identifier());
             node.fix_total_member_count();
         }
-        if (parent.getRelations().length >= this.max_fragment_size) {
+        if (parent.getRelations().length > this.max_fragment_size) {
             this.splitInternalNode(parent, value);
         }
         var _c = this.checkRelationsMinMax(smallChildrenNode), smallstart = _c[0], smallend = _c[1];
@@ -361,14 +361,35 @@ var BinaryBTree = /** @class */ (function (_super) {
     * @param {DataObject} searched_member
     */
     BinaryBTree.prototype.searchData = function (value) {
-        return this._search_data_recursive(this.get_root_node(), value);
+        return this._search_data_recursive(this.get_root_node(), value)[0];
+    };
+    BinaryBTree.prototype.searchNode = function (value) {
+        var nodes = this._search_data_recursive(this.get_root_node(), value)[1];
+        var returnNodes = new Array();
+        var addedNodes = new Set();
+        for (var _i = 0, nodes_1 = nodes; _i < nodes_1.length; _i++) {
+            var node = nodes_1[_i];
+            for (var _a = 0, _b = node.get_members(); _a < _b.length; _a++) {
+                var member = _b[_a];
+                if (member.get_representation() === value) {
+                    if (!addedNodes.has(node.get_node_id())) {
+                        returnNodes.push(node);
+                        addedNodes.add(node.get_node_id());
+                    }
+                    break;
+                }
+            }
+        }
+        return returnNodes;
     };
     BinaryBTree.prototype._search_data_recursive = function (currentNode, searchValue) {
-        var returnMembers = new Array();
+        var resultingMembers = new Array();
+        var resultingNodes = new Array();
         for (var _i = 0, _a = currentNode.get_members(); _i < _a.length; _i++) {
             var member = _a[_i];
             if (member.get_representation() === searchValue) {
-                returnMembers.push(member);
+                resultingMembers.push(member);
+                resultingNodes.push(currentNode);
             }
         }
         if (currentNode.has_child_relations()) {
@@ -378,11 +399,13 @@ var BinaryBTree = /** @class */ (function (_super) {
                 var intervalStart = entry[1].start;
                 var intervalEnd = entry[1].end;
                 if ((intervalStart === null || this.memberNameComparisonFunction(intervalStart, searchValue) < 0) && (intervalEnd === null || this.memberNameComparisonFunction(searchValue, intervalEnd) <= 0)) { // <= for end because it is a lesser than or equal
-                    returnMembers = returnMembers.concat(this._search_data_recursive(this.get_cache().get_node_by_id(entry[0]), searchValue));
+                    var _d = this._search_data_recursive(this.get_cache().get_node_by_id(entry[0]), searchValue), resMems = _d[0], resNodes = _d[1];
+                    resultingMembers = resultingMembers.concat(resMems);
+                    resultingNodes = resultingNodes.concat(resNodes);
                 }
             }
         }
-        return returnMembers;
+        return [resultingMembers, resultingNodes];
     };
     return BinaryBTree;
 }(Tree_1.Tree));

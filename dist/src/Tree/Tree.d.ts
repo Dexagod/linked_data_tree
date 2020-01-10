@@ -20,7 +20,7 @@ export declare abstract class Tree {
      * Node argument is unused, kept in case of needed refactor of this method.
      * @param {Node} node
      */
-    provide_node_id(): number;
+    provide_node_id(): string;
     /**
      * Returns the tree root node.
      */
@@ -50,8 +50,13 @@ export declare abstract class Tree {
     /**
      * Returns the tree fragment cache.
      */
+    abstract searchNode(value: any): Array<Node>;
+    /**
+     * Returns the tree fragment cache.
+     */
     get_cache(): Cache;
     createFirstNode(representation: any, member: Member | null): Node;
     get_root_node_identifier(): Identifier | null;
     set_root_node_identifier(identifier: Identifier): void;
+    checkNodeSplit(node: Node): boolean;
 }

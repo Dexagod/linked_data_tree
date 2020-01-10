@@ -72,6 +72,7 @@ export class Cache {
     }
 
     get_node_by_id(nodeId: string) : Node {
+        if (nodeId === undefined) { throw new Error("requesting non-existing identifyer")}
         if (this.cache.has(nodeId)) {
             this.cache_hits.set(nodeId, this.assign_cache_counter());
             return this.getNodeFromCache(nodeId);

@@ -27,6 +27,9 @@ var TreeRepresentation = /** @class */ (function () {
     TreeRepresentation.prototype.searchData = function (value) {
         return this.tree.searchData(value);
     };
+    TreeRepresentation.prototype.searchNode = function (value) {
+        return this.tree.searchNode(value);
+    };
     /**
      * Indicate finished adding data.
      * Cache can be flushed.
