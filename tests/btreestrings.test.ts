@@ -13,11 +13,11 @@ import fs = require("fs")
 import { Relation } from '../src/Relation';
 import { ChildRelation } from '../src/Relations/ChildRelation';
 let sourceDirectory = "tests/testdata/"
-let sourceFile = "tests/straatnamen10k.txt"
+let sourceFile = "tests/straatnamen20k.txt"
 let binaryTreeStringDataLocation = "binary_streets/"
 let binaryTreeStringLocation = "binary_collections/"
 let binaryTreeStringFile = "binary_streetnames" 
-let maxFragmentSize = 4 // 100
+let maxFragmentSize = 50 // 100
 let maxCachedFragments = 10000
 // Read input file
 

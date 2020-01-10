@@ -6,6 +6,9 @@ import { Identifier } from '../Identifier';
 import { Relation } from '../Relation';
 import { Interval } from '../Interval';
 
+/*
+TODO:: FIX TOTAL COUNTS
+*/
 
 export class BinaryBTree extends Tree {
 
@@ -23,11 +26,7 @@ export class BinaryBTree extends Tree {
       return null;
     }
     let interval : Interval = {start: null, end: null, startrelation:null, endrelation:null}
-
-
     this.nodePath = []
-    console.log("")
-    console.log("NEW ADDITION", representation)
     return this.recursiveAddition(this.get_root_node(), member, representation, interval)
   }
 
@@ -67,7 +66,6 @@ export class BinaryBTree extends Tree {
       let possibleTargetNodes = []; // List[ [id, interval], .. ]
       for (let entry of Array.from(intervalMap.entries())){
         if ( this.isInInterval(entry[1], value, compare)){
-          console.log(value, entry[1], this.isInInterval(entry[1], value, compare), level)
           possibleTargetNodes.push(entry)
         }
       }
@@ -80,18 +78,14 @@ export class BinaryBTree extends Tree {
     } 
 
     if (currentNode.has_child_relations()){ 
-      console.log("")
-      console.log("")
-      console.log(Array.from(this.getIntervals(currentNode.getRelations()).entries()).map((e:any)=>[e[1].start, e[1].end]) , value)
       throw new Error("There is a gap between the nodes where a value fell through.")
     }
 
-
     if (member !== null) {
       currentNode.add_data(member)
-
       if (this.checkNodeSplit(currentNode)) {
-        return this.splitLeafNode(currentNode, interval, value)
+        let node = this.splitLeafNode(currentNode, interval, value)
+        return node;
       }
     }
     return currentNode;
@@ -144,11 +138,9 @@ export class BinaryBTree extends Tree {
   splitLeafNode(node : Node, interval : Interval, value : any) : Node{
     for (let element of node.get_members().map(e=>e.get_representation())){
       if (interval.start !== null && compare(interval.start, element) > 0){
-        console.log("ERROR", interval, element, value, compare(interval.start, element))
         throw new Error("unsanitary node1")
       }
       if (interval.end !== null && compare(interval.end, element) < 0){
-        console.log(interval, element, value, compare(interval.end, element), interval.end.localeCompare(element))
         throw new Error("unsanitary node2")
       }
     }
@@ -159,8 +151,6 @@ export class BinaryBTree extends Tree {
 
     let splitMember = smallMembers.pop()
     if (splitMember === undefined) { throw new Error("could not define split position")}
-
-    // console.log(smallMembers.map(e=>e.representation), " - ", splitMember, " - ", largeMembers.map(e=>e.representation))
 
     node.deleteMembers() // SPLITVALUE is highest value for the LesserThanOrEqual relation
   
@@ -192,7 +182,7 @@ export class BinaryBTree extends Tree {
      */
     if (interval.start !== null){
       let relationType = interval.startrelation
-      if (relationType === null || relationType === undefined) { throw new Error()}
+      if (relationType === null || relationType === undefined) { throw new Error() }
       // if (smallMembers.map((e:any) => e.get_representation()).indexOf(interval.start) !== -1){
       //   relationType = ChildRelation.GreaterOrEqualThanRelation
       // }
@@ -212,7 +202,7 @@ export class BinaryBTree extends Tree {
     
     if (interval.end !== null){
       let relationType = interval.endrelation
-      if (relationType === null || relationType === undefined) { throw new Error()}
+      if (relationType === null || relationType === undefined) { throw new Error() }
       // let relationType = ChildRelation.LesserOrEqualThanRelation
       // if (parentRelations.ltrelation !== null) { relationType = parentRelations.ltrelation.type }
       relationList.push( this.createRelation(relationType, interval.end, largeMembersNode.get_identifier()) )
@@ -223,19 +213,20 @@ export class BinaryBTree extends Tree {
     
     if (nodeHasParent) {
       parent.swapChildrenWithRelation(node, relationList, newChildrenList)
-      parent.add_data(splitMember)
+      parent.add_data_no_propagation(splitMember)
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
       for (let i = 0; i < relationList.length; i++){
         node.add_child_no_propagation_with_relation(relationList[i], newChildrenList[i])
       }
-      node.add_data(splitMember)
+      node.add_data_no_propagation(splitMember)
       this.set_root_node_identifier(node.get_identifier())
     }
 
     smallMembersNode.fix_total_member_count()
     largeMembersNode.fix_total_member_count()
     parent.fix_total_member_count()
+
 
     if (parent.getRelations().length > this.max_fragment_size){
       this.splitInternalNode(parent, value)
@@ -252,7 +243,8 @@ export class BinaryBTree extends Tree {
     let intervalEntries = Array.from(intervalMap.entries()).sort(this.comparisonFunction)
 
     let smallChildrenNodeEntries = intervalEntries.slice(0, Math.ceil(intervalEntries.length / 2))
-    let largeChildrenNodeEntries = intervalEntries.splice(Math.ceil(intervalEntries.length / 2))
+    let largeChildrenNodeEntries = intervalEntries.slice(Math.ceil(intervalEntries.length / 2))
+
     let splitValueSmall = smallChildrenNodeEntries[smallChildrenNodeEntries.length - 1][1].end
     let splitValueLarge = largeChildrenNodeEntries[0][1].start
     let splitRelationLarge = largeChildrenNodeEntries[0][1].startrelation
@@ -265,10 +257,7 @@ export class BinaryBTree extends Tree {
     if (splitMember === undefined ) { throw new Error("could not define split position")}
 
     if (splitMember.get_representation() !== splitValueSmall){ 
-      console.log("")
-      console.log("")
-      console.log("")
-      console.log(memberList.map(e=>e.representation), "\n", splitMember.get_representation(), splitValueSmall, "\n", smallChildrenNodeEntries.map(e=>[e[1].start, e[1].end]), largeChildrenNodeEntries.map(e=>[e[1].start, e[1].end]));
+      // console.log(memberList.map(e=>e.representation), "\n", splitMember.get_representation(), splitValueSmall, "\n", smallChildrenNodeEntries.map(e=>[e[1].start, e[1].end]), largeChildrenNodeEntries.map(e=>[e[1].start, e[1].end]));
       throw new Error("Split member does not equal split value")
     }
 
@@ -314,25 +303,20 @@ export class BinaryBTree extends Tree {
 
     if (nodeHasParent) {
       parent = this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValueSmall, splitValueLarge, splitRelationLarge)
-      parent.add_data(splitMember)
+      parent.add_data_no_propagation(splitMember)
 
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
 
-      let GTrelation = ChildRelation.GreaterThanRelation; 
-      if (splitValueSmall === splitValueLarge){
-        GTrelation = ChildRelation.GreaterOrEqualThanRelation
-      }
-
       let ltrelation = parentRelations.ltrelation !== null ? parentRelations.ltrelation.type : ChildRelation.LesserOrEqualThanRelation;
-      let gtrelation = parentRelations.gtrelation !== null ? parentRelations.gtrelation.type : GTrelation;
+      let gtrelation = parentRelations.gtrelation !== null ? parentRelations.gtrelation.type : splitRelationLarge;
 
       let smallChildRelation = this.createRelation(ltrelation, splitValueSmall, smallChildrenNode.get_identifier())
       let largeChildRelation = this.createRelation(gtrelation, splitValueLarge, largeChildrenNode.get_identifier())
       node.add_child_with_relation(smallChildRelation, smallChildrenNode)
       node.add_child_with_relation(largeChildRelation, largeChildrenNode)
       this.set_root_node_identifier(node.get_identifier())
-      node.add_data(splitMember)
+      node.add_data_no_propagation(splitMember)
     }
 
     smallChildrenNode.fix_total_member_count()
@@ -389,7 +373,7 @@ export class BinaryBTree extends Tree {
 
     // let relationType = splitValueSmall === splitValueLarge? ChildRelation.GreaterOrEqualThanRelation : ChildRelation.GreaterThanRelation
     
-    newRelations.push(this.createRelation(splitRelationLarge.type, splitValueSmall, largeChildrenNode.get_identifier()))
+    newRelations.push(this.createRelation(splitRelationLarge, splitValueSmall, largeChildrenNode.get_identifier()))
     // newRelations.push(this.createRelation(relationType, splitValueSmall, largeChildrenNode.get_identifier()))
 
     if (oldNodeLTERelation !== null && oldNodeLTERelation !== undefined){
@@ -445,7 +429,11 @@ export class BinaryBTree extends Tree {
     if (b[1].start === null) {return 1}; 
     if (a[1].end === null) {return 1};
     if (b[1].end === null) {return -1};
-    return compare(a[1].start, b[1].start) 
+    if (a[1].start !== b[1].start){
+      return compare(a[1].start, b[1].start) 
+    } else {
+      return compare(a[1].end, b[1].end) 
+    }
   }
 
   /**
@@ -497,7 +485,6 @@ export class BinaryBTree extends Tree {
     } 
     return [resultingMembers, resultingNodes]
   }
-
 }
 
 

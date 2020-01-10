@@ -292,6 +292,15 @@ export class Node {
         this.members.push(member);
         this.propagate_children_count(1)
     }
+       
+    /**
+     * Adds the data object to this node.
+     * @param {Member} member 
+     */
+    add_data_no_propagation(member: Member) {
+        if (member.contents === null){ return }
+        this.members.push(member);
+    }
     
     /**
      * Helper method to transfer node information to a new node.

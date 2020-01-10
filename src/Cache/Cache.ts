@@ -136,7 +136,7 @@ export class Cache {
 
 
     clean_cache() {
-        console.log("CLEANING CACHE")
+        
         this.cache_cleans += 1;
 
         let cache_values: Array<Array<any>> = new Array()
@@ -157,6 +157,7 @@ export class Cache {
     }
 
     flush_cache(tree : Tree) {
+
         let rootNodeIdentifier = tree.get_root_node_identifier()
         let keyArray = Array.from(this.cache.keys())
         if (rootNodeIdentifier != null){
