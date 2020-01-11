@@ -13,6 +13,7 @@ var binaryTreeStringFile = "binary_streetnames";
 var maxFragmentSize = 50; // 100
 var maxCachedFragments = 10000;
 // Read input file
+var k = 0;
 describe('Binary Tree String tests', function () {
     var readLines = fs.readFileSync(sourceFile).toString().split("\n");
     var representations = [];
@@ -24,29 +25,28 @@ describe('Binary Tree String tests', function () {
     });
     var count = 0;
     it('Adding a single item to tree', function () {
-        var long = 10; //(Math.random() * 2) + 2;
-        var lat = 20; //(Math.random() * 3) + 50;
-        var dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-        @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-        <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .');
-        tree.addData("Teststraat", dataObject);
-        chai_1.expect(tree.getTreeObject().node_count).to.equal(1);
+        // let long = 10//(Math.random() * 2) + 2;
+        // let lat = 20//(Math.random() * 3) + 50;
+        // let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
+        //     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
+        //     @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
+        //     <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
+        // tree.addData("Teststraat", dataObject)
+        // expect(tree.getTreeObject().node_count).to.equal(1);
     });
+    var identifier = 0;
     it('adding street names to tree', function () {
         for (var _i = 0, readLines_1 = readLines; _i < readLines_1.length; _i++) {
             var line = readLines_1[_i];
+            line = line.trim();
             // Create new Triple object to add to the given tree, containing a representation and an object.
             var long = (Math.random() * 2) + 2;
             var lat = (Math.random() * 3) + 50;
-            var dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-          @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-          @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-          <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "' + line + '"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .');
+            var dataObject = { "@id": identifier++ };
             // Add the member to the tree.
             var node = tree.addData(line, dataObject);
             if (node !== null && node !== undefined) {
-                representations.push(line);
+                representations.push([line, dataObject]);
             }
         }
     });
@@ -58,17 +58,19 @@ describe('Binary Tree String tests', function () {
         newtree = treeManager.readTree(sourceDirectory, binaryTreeStringDataLocation, "oslo:label", // shacl:path
         maxCachedFragments, maxFragmentSize);
         for (var _i = 0, representations_1 = representations; _i < representations_1.length; _i++) {
-            var rep = representations_1[_i];
+            var entry = representations_1[_i];
+            var identifier_1 = entry[1];
+            var rep = entry[0];
             var foundreps = newtree.searchData(rep);
-            chai_1.expect(newtree.searchNode(rep).length).equals(1);
-            // console.log("foundreps", foundreps)
+            chai_1.expect(newtree.searchNode(rep).length).gt(0);
             if (foundreps === null) {
                 chai_1.expect(false);
             }
             else {
                 var found = false;
                 for (var i = 0; i < foundreps.length; i++) {
-                    if (foundreps[i].get_representation() === rep) {
+                    var entry_1 = foundreps[i];
+                    if (entry_1["@id"] === identifier_1["@id"]) {
                         found = true;
                     }
                 }
@@ -103,7 +105,7 @@ function checkItems(currentNode, depth) {
     }
     totalItems += currentNode.get_members().length;
     var childRelationArray = currentNode.children;
-    checkRelations(childRelationArray);
+    // checkRelations(childRelationArray)
     for (var _b = 0, childRelationArray_1 = childRelationArray; _b < childRelationArray_1.length; _b++) {
         var relation = childRelationArray_1[_b];
         chai_1.expect(relation).not.null;
@@ -111,19 +113,24 @@ function checkItems(currentNode, depth) {
         chai_1.expect(relation.type).not.null;
         chai_1.expect(relation.value).not.null;
     }
+    // if (totalItems !== currentNode.get_remainingItems()){
+    //   console.log(currentNode.get_children_objects().map( (e:Node) => { return [e.identifier.nodeId, e.remainingItems] }))
+    // }
+    // console.log(currentNode.get_remainingItems())
     chai_1.expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
 function checkRelations(relationList) {
     var sortedRelations = relationList.sort(function (rel1, rel2) {
         if (rel1.value === rel2.value) {
-            if (rel1.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation && rel2.type === ChildRelation_1.ChildRelation.GreaterThanRelation) {
+            if ((rel1.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation || rel1.type === ChildRelation_1.ChildRelation.LesserThanRelation) &&
+                (rel2.type === ChildRelation_1.ChildRelation.GreaterThanRelation || rel2.type === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation)) {
                 return -1;
             }
-            else if (rel1.type === ChildRelation_1.ChildRelation.GreaterThanRelation && rel2.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation) {
+            else if ((rel1.type === ChildRelation_1.ChildRelation.GreaterThanRelation || rel1.type === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation) &&
+                (rel2.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation || rel2.type === ChildRelation_1.ChildRelation.LesserThanRelation)) {
                 return 1;
             }
             else {
-                console.log("RELATIONS INCORRECT", rel1, rel2);
                 chai_1.expect(false);
                 return 0;
             }

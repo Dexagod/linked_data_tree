@@ -92,6 +92,16 @@ var Node = /** @class */ (function () {
     Node.prototype.getRelations = function () {
         return this.children;
     };
+    Node.prototype.getRelationsForChild = function (childIdentifier) {
+        var relationList = [];
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+            var relation = _a[_i];
+            if (relation.identifier.nodeId === childIdentifier.nodeId) {
+                relationList.push(relation);
+            }
+        }
+        return relationList;
+    };
     // Removes a child node from this node
     Node.prototype.remove_child = function (node) {
         var newRelations = new Array();
@@ -249,6 +259,16 @@ var Node = /** @class */ (function () {
         }
         this.members.push(member);
         this.propagate_children_count(1);
+    };
+    /**
+     * Adds the data object to this node.
+     * @param {Member} member
+     */
+    Node.prototype.add_data_no_propagation = function (member) {
+        if (member.contents === null) {
+            return;
+        }
+        this.members.push(member);
     };
     /**
      * Helper method to transfer node information to a new node.

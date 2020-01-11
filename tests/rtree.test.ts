@@ -52,6 +52,7 @@ describe('RTree tests', () => {
 
   });
 
+  let identifier = 0
   it('adding street names to tree', () => {
     
     
@@ -63,13 +64,29 @@ describe('RTree tests', () => {
       let representation = "POINT (" + lat + " " + long  + ")"
       // Add the member to the tree.
       
-      let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-                                          @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-                                          @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-                                          <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "' + line + '"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
+      let dataObject = {"@id": identifier++}
+
       let node = tree.addData(representation, dataObject)
+
+
+      let foundreps = tree.searchData(terraformer_parser.parse(representation));
+      if (foundreps === null) { expect(false) } else {
+        let found = false
+        console.log("FOUNDREPSLENGTH", foundreps.length)
+        for (let i = 0; i < foundreps.length; i++){
+          let item : any= foundreps[i]
+          if (item["@id"] === dataObject["@id"]) {
+            found = true;
+          }
+        }
+        expect(found).equals(true)
+        console.log("FOUND")
+      }
+
+
+
       if (node !== null && node !== undefined){
-        representations.push(representation)
+        representations.push([representation, dataObject])
       }
     }
   })  
@@ -89,12 +106,22 @@ describe('RTree tests', () => {
       maxFragmentSize)
 
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
-    for (let rep of representations) {
-      let foundreps = newtree.searchData(rep);
+    for (let entry of representations) {
+      let rep = entry[0]
+      let dataObject = entry[1]
+      console.log("")
+      console.log("")
+      console.log("")
+      console.log("")
+      console.log("")
+      console.log("REP", rep, dataObject)
+      let foundreps = newtree.searchData(terraformer_parser.parse(rep));
       if (foundreps === null) { expect(false) } else {
         let found = false
+        console.log("FOUNDREPSLENGTH", foundreps.length)
         for (let i = 0; i < foundreps.length; i++){
-          if (foundreps[i].get_representation() === rep) {
+          let item : any= foundreps[i]
+          if (item["@id"] === dataObject["@id"]) {
             found = true;
           }
         }

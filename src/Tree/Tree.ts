@@ -116,7 +116,7 @@ export abstract class Tree {
     }
 
     checkNodeSplit(node: Node) : boolean{
-        if (node.get_members().length > this.max_fragment_size) {
+        if (node.get_members().map(e=>e.size).reduce((a:number, b:number) => a+b, 0) > this.max_fragment_size) {
             return true
         }
         return false;

@@ -27,6 +27,7 @@ export declare class Node {
     has_child_relations(): boolean;
     propagate_children_count(increment: number): void;
     getRelations(): Array<Relation>;
+    getRelationsForChild(childIdentifier: Identifier): Relation[];
     remove_child(node: Node): void;
     swapChildren(oldChild: Node, relations: Array<ChildRelation>, newChildren: Array<Node>, values: Array<any>): void;
     swapChildrenWithRelation(oldChild: Node, relations: Array<Relation>, newChildren: Array<Node>): void;
@@ -73,6 +74,11 @@ export declare class Node {
      * @param {Member} member
      */
     add_data(member: Member): void;
+    /**
+     * Adds the data object to this node.
+     * @param {Member} member
+     */
+    add_data_no_propagation(member: Member): void;
     /**
      * Helper method to transfer node information to a new node.
      * @param {Node} othernode

@@ -33,12 +33,10 @@ export abstract class TreeRepresentation{
      * @param {string} representation 
      * @param {any} data 
      */
-    addData(representation: any, data: any, dataRepresentation = representation) {
-      let newmember = new Member(dataRepresentation, data)
-      
-      this.tree.addData(representation, newmember)
+    addData(representation: any, data: any, dataRepresentation : any = representation, triplesSize: number = 1) : Node | null {
+        return this.tree.addData(representation, new Member(dataRepresentation, data, triplesSize))
     }
-    
+
     searchData(value: any) : Member[] | null{
         return this.tree.searchData(value)
     }

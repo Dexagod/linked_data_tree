@@ -9,8 +9,4 @@ export class HydraPartialCollectionViewRepresentation extends TreeRepresentation
     return new HydraPartialCollectionView(maxFragmentSize, fc)
   }
 
-  addData(representation: any, data: any, dataRepresentation : any = representation) : Node | null{
-    return this.tree.addData(representation, new Member(dataRepresentation, data))
-  }
-  
 }

@@ -18,6 +18,9 @@ var Node_1 = require("../Node/Node");
 var ChildRelation_1 = require("../Relations/ChildRelation");
 var Identifier_1 = require("../Identifier");
 var Relation_1 = require("../Relation");
+/*
+TODO:: FIX TOTAL COUNTS
+*/
 var BinaryBTree = /** @class */ (function (_super) {
     __extends(BinaryBTree, _super);
     function BinaryBTree() {
@@ -38,21 +41,53 @@ var BinaryBTree = /** @class */ (function (_super) {
         if (representation == "" || representation == null) {
             return null;
         }
-        var interval = { start: null, end: null };
+        var interval = { start: null, end: null, startrelation: null, endrelation: null };
         this.nodePath = [];
         return this.recursiveAddition(this.get_root_node(), member, representation, interval);
     };
-    BinaryBTree.prototype.recursiveAddition = function (currentNode, member, value, interval) {
+    BinaryBTree.prototype.isInInterval = function (interval, value, comparisonFunction) {
+        if (interval.start !== null) {
+            if (interval.startrelation === ChildRelation_1.ChildRelation.GreaterThanRelation) {
+                if (!(comparisonFunction(value, interval.start) > 0)) {
+                    return false;
+                }
+            }
+            else if (interval.startrelation === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation) {
+                if (!(comparisonFunction(value, interval.start) >= 0)) {
+                    return false;
+                }
+            }
+        }
+        if (interval.end !== null) {
+            if (interval.endrelation === ChildRelation_1.ChildRelation.LesserThanRelation) {
+                if (!(comparisonFunction(value, interval.end) < 0)) {
+                    return false;
+                }
+            }
+            else if (interval.endrelation === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation) {
+                if (!(comparisonFunction(value, interval.end) <= 0)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    BinaryBTree.prototype.recursiveAddition = function (currentNode, member, value, interval, level) {
+        var _this = this;
+        if (level === void 0) { level = 0; }
         this.nodePath.push(currentNode);
         if (currentNode.has_child_relations()) {
             var intervalMap = this.getIntervals(currentNode.getRelations());
+            var possibleTargetNodes = []; // List[ [id, interval], .. ]
             for (var _i = 0, _a = Array.from(intervalMap.entries()); _i < _a.length; _i++) {
                 var entry = _a[_i];
-                var intervalStart = entry[1].start;
-                var intervalEnd = entry[1].end;
-                if ((intervalStart === null || this.memberNameComparisonFunction(intervalStart, value) < 0) && (intervalEnd === null || this.memberNameComparisonFunction(value, intervalEnd) <= 0)) { // <= for end because it is a lesser than or equal
-                    return this.recursiveAddition(this.get_cache().get_node_by_id(entry[0]), member, value, entry[1]);
+                if (this.isInInterval(entry[1], value, compare)) {
+                    possibleTargetNodes.push(entry);
                 }
+            }
+            if (possibleTargetNodes.length > 0) {
+                possibleTargetNodes = possibleTargetNodes.sort(function (a, b) { return _this.get_cache().get_node_by_id(a[0]).get_remainingItems() - _this.get_cache().get_node_by_id(b[0]).get_remainingItems(); });
+                return this.recursiveAddition(this.get_cache().get_node_by_id(possibleTargetNodes[0][0]), member, value, possibleTargetNodes[0][1], level + 1);
             }
         }
         if (currentNode.has_child_relations()) {
@@ -61,7 +96,8 @@ var BinaryBTree = /** @class */ (function (_super) {
         if (member !== null) {
             currentNode.add_data(member);
             if (this.checkNodeSplit(currentNode)) {
-                return this.splitLeafNode(currentNode, interval, value);
+                var node = this.splitLeafNode(currentNode, interval, value);
+                return node;
             }
         }
         return currentNode;
@@ -71,54 +107,66 @@ var BinaryBTree = /** @class */ (function (_super) {
         for (var _i = 0, relationList_1 = relationList; _i < relationList_1.length; _i++) {
             var relation = relationList_1[_i];
             if (relation.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation) {
-                this.addToIntervalMap(relationMap, relation.identifier.nodeId, null, relation.value);
+                this.addToIntervalMap(relationMap, relation.identifier.nodeId, null, relation.value, relation);
+            }
+            if (relation.type === ChildRelation_1.ChildRelation.LesserThanRelation) {
+                this.addToIntervalMap(relationMap, relation.identifier.nodeId, null, relation.value, relation);
             }
             if (relation.type === ChildRelation_1.ChildRelation.GreaterThanRelation) {
-                this.addToIntervalMap(relationMap, relation.identifier.nodeId, relation.value, null);
+                this.addToIntervalMap(relationMap, relation.identifier.nodeId, relation.value, null, relation);
+            }
+            if (relation.type === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation) {
+                this.addToIntervalMap(relationMap, relation.identifier.nodeId, relation.value, null, relation);
             }
         }
         return relationMap;
     };
+    BinaryBTree.prototype.getParentRelations = function (node) {
+        var GTrelation = null;
+        var LTrelation = null;
+        if (!node.has_parent_node()) {
+            return { gtrelation: null, ltrelation: null };
+        }
+        var parent = node.get_parent_node();
+        if (parent === null || parent === undefined) {
+            return { gtrelation: null, ltrelation: null };
+        }
+        var relations = parent.getRelationsForChild(node.identifier);
+        if (relations.length !== 1 && relations.length !== 2) {
+            throw new Error("Incorrect number of relations to child node");
+        }
+        for (var _i = 0, relations_1 = relations; _i < relations_1.length; _i++) {
+            var relation = relations_1[_i];
+            if (relation.type === ChildRelation_1.ChildRelation.GreaterThanRelation || relation.type === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation) {
+                GTrelation = relation;
+            }
+            else {
+                LTrelation = relation;
+            }
+        }
+        return { gtrelation: GTrelation, ltrelation: LTrelation };
+    };
     BinaryBTree.prototype.splitLeafNode = function (node, interval, value) {
         for (var _i = 0, _a = node.get_members().map(function (e) { return e.get_representation(); }); _i < _a.length; _i++) {
             var element = _a[_i];
-            if (interval.start !== null && compare(interval.start, element) >= 0) {
+            if (interval.start !== null && compare(interval.start, element) > 0) {
                 throw new Error("unsanitary node1");
             }
             if (interval.end !== null && compare(interval.end, element) < 0) {
                 throw new Error("unsanitary node2");
             }
         }
-        var membersSet = new Set();
-        for (var _b = 0, _c = node.get_members().map(function (e) { return e.get_representation(); }); _b < _c.length; _b++) {
-            var member = _c[_b];
-            membersSet.add(member);
-        }
-        if (membersSet.size < 4) {
-            // We cannot split this node, because that would give problems to the balancing; We need at least 2 different values left and right
-            return node;
-        }
-        var orderedMemberNames = Array.from(membersSet).sort(this.memberNameComparisonFunction);
-        var smallMemberNames = orderedMemberNames.slice(0, Math.ceil(orderedMemberNames.length / 2));
-        var largeMemberNames = orderedMemberNames.slice(Math.ceil(orderedMemberNames.length / 2));
-        var splitValue = smallMemberNames[smallMemberNames.length - 1];
-        var smallMembers = new Array();
-        var largeMembers = new Array();
-        for (var _d = 0, _e = node.get_members(); _d < _e.length; _d++) {
-            var member = _e[_d];
-            if (smallMemberNames.indexOf(member.get_representation()) != -1) {
-                smallMembers.push(member);
-            }
-            else if (largeMemberNames.indexOf(member.get_representation()) != -1) {
-                largeMembers.push(member);
-            }
-            else {
-                throw new Error('member name not in list');
-            }
+        var nodeMembers = node.members.sort(this.compareMembers);
+        var smallMembers = nodeMembers.slice(0, Math.floor(nodeMembers.length / 2));
+        var largeMembers = nodeMembers.slice(Math.floor(nodeMembers.length / 2));
+        var splitMember = smallMembers.pop();
+        if (splitMember === undefined) {
+            throw new Error("could not define split position");
         }
         node.deleteMembers(); // SPLITVALUE is highest value for the LesserThanOrEqual relation
         var parent = null;
         var nodeHasParent = true;
+        var parentRelations = this.getParentRelations(node);
         if (node.has_parent_node()) {
             parent = node.get_parent_node();
         }
@@ -133,52 +181,82 @@ var BinaryBTree = /** @class */ (function (_super) {
         largeMembersNode.set_members(largeMembers);
         var relationList = new Array();
         var newChildrenList = new Array();
+        /***
+         * SETTING THE NEW RELATION VALUES
+         */
         if (interval.start !== null) {
-            relationList.push(this.createRelation(ChildRelation_1.ChildRelation.GreaterThanRelation, interval.start, smallMembersNode.get_identifier()));
+            var relationType = interval.startrelation;
+            if (relationType === null || relationType === undefined) {
+                throw new Error();
+            }
+            // if (smallMembers.map((e:any) => e.get_representation()).indexOf(interval.start) !== -1){
+            //   relationType = ChildRelation.GreaterOrEqualThanRelation
+            // }
+            // if (parentRelations.gtrelation !== null) { relationType = parentRelations.gtrelation.type }
+            relationList.push(this.createRelation(relationType, interval.start, smallMembersNode.get_identifier()));
             newChildrenList.push(smallMembersNode);
         }
-        relationList.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, splitValue, smallMembersNode.get_identifier()));
+        relationList.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, splitMember.get_representation(), smallMembersNode.get_identifier()));
         newChildrenList.push(smallMembersNode);
-        relationList.push(this.createRelation(ChildRelation_1.ChildRelation.GreaterThanRelation, splitValue, largeMembersNode.get_identifier()));
+        var afterSplitRelation = splitMember.get_representation() === largeMembers[0].get_representation() ?
+            ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation : ChildRelation_1.ChildRelation.GreaterThanRelation;
+        relationList.push(this.createRelation(afterSplitRelation, splitMember.get_representation(), largeMembersNode.get_identifier()));
         newChildrenList.push(largeMembersNode);
         if (interval.end !== null) {
-            relationList.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, interval.end, largeMembersNode.get_identifier()));
+            var relationType = interval.endrelation;
+            if (relationType === null || relationType === undefined) {
+                throw new Error();
+            }
+            // let relationType = ChildRelation.LesserOrEqualThanRelation
+            // if (parentRelations.ltrelation !== null) { relationType = parentRelations.ltrelation.type }
+            relationList.push(this.createRelation(relationType, interval.end, largeMembersNode.get_identifier()));
             newChildrenList.push(largeMembersNode);
         }
-        smallMembersNode.fix_total_member_count();
-        largeMembersNode.fix_total_member_count();
         this.checkRelationsMinMax(parent);
         if (nodeHasParent) {
             parent.swapChildrenWithRelation(node, relationList, newChildrenList);
-            parent.fix_total_member_count();
+            parent.add_data_no_propagation(splitMember);
             this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
         }
         else {
             for (var i = 0; i < relationList.length; i++) {
                 node.add_child_no_propagation_with_relation(relationList[i], newChildrenList[i]);
             }
+            node.add_data_no_propagation(splitMember);
             this.set_root_node_identifier(node.get_identifier());
-            node.fix_total_member_count();
         }
+        smallMembersNode.fix_total_member_count();
+        largeMembersNode.fix_total_member_count();
+        parent.fix_total_member_count();
         if (parent.getRelations().length > this.max_fragment_size) {
             this.splitInternalNode(parent, value);
         }
-        if (value <= splitValue) {
-            return smallMembersNode;
-        }
-        else {
-            return largeMembersNode;
-        }
+        return largeMembersNode; // THIS CAN BE INCORRECT BUT IT DOESNT MATTER ANYMORE, WAS USED FOR TESTING PURPOSES
     };
     BinaryBTree.prototype.splitInternalNode = function (node, value) {
         // splitting an internal node
-        var _a = this.checkRelationsMinMax(node), start = _a[0], end = _a[1];
+        var memberList = node.get_members().sort(this.compareMembers);
         var intervalMap = this.getIntervals(node.getRelations());
-        var smallChildrenNodeEntries = Array.from(intervalMap.entries()).sort(this.comparisonFunction);
-        var largeChildrenNodeEntries = smallChildrenNodeEntries.splice(Math.ceil(smallChildrenNodeEntries.length / 2));
-        var splitValue = smallChildrenNodeEntries[smallChildrenNodeEntries.length - 1][1].end;
+        var intervalEntries = Array.from(intervalMap.entries()).sort(this.comparisonFunction);
+        var smallChildrenNodeEntries = intervalEntries.slice(0, Math.ceil(intervalEntries.length / 2));
+        var largeChildrenNodeEntries = intervalEntries.slice(Math.ceil(intervalEntries.length / 2));
+        var splitValueSmall = smallChildrenNodeEntries[smallChildrenNodeEntries.length - 1][1].end;
+        var splitValueLarge = largeChildrenNodeEntries[0][1].start;
+        var splitRelationLarge = largeChildrenNodeEntries[0][1].startrelation;
+        var smallMembers = memberList.slice(0, Math.floor(node.members.length / 2) + 1);
+        var largeMembers = memberList.slice(1 + Math.floor(node.members.length / 2));
+        var splitMember = smallMembers.pop();
+        if (splitMember === undefined) {
+            throw new Error("could not define split position");
+        }
+        if (splitMember.get_representation() !== splitValueSmall) {
+            // console.log(memberList.map(e=>e.representation), "\n", splitMember.get_representation(), splitValueSmall, "\n", smallChildrenNodeEntries.map(e=>[e[1].start, e[1].end]), largeChildrenNodeEntries.map(e=>[e[1].start, e[1].end]));
+            throw new Error("Split member does not equal split value");
+        }
+        node.deleteMembers(); // SPLITVALUE is highest value for the LesserThanOrEqual relation
         var parent = null;
         var nodeHasParent = true;
+        var parentRelations = this.getParentRelations(node);
         if (node.has_parent_node()) {
             parent = node.get_parent_node();
         }
@@ -189,90 +267,65 @@ var BinaryBTree = /** @class */ (function (_super) {
         }
         var smallChildrenNode = new Node_1.Node(null, parent, this);
         var largeChildrenNode = new Node_1.Node(null, parent, this);
-        for (var _i = 0, smallChildrenNodeEntries_1 = smallChildrenNodeEntries; _i < smallChildrenNodeEntries_1.length; _i++) {
-            var entry = smallChildrenNodeEntries_1[_i];
-            var entryIdentifier = new Identifier_1.Identifier(entry[0], null);
-            var entryStart = entry[1].start;
-            var entryEnd = entry[1].end;
-            if (entryIdentifier === null || entryIdentifier === undefined || entryIdentifier.nodeId === null || entryIdentifier.nodeId === undefined) {
-                throw new Error(" undefined entry identifier ");
-            }
-            if (entryStart !== null) {
-                var smallChildGTRelation = new Relation_1.Relation(ChildRelation_1.ChildRelation.GreaterThanRelation, entryStart, entryIdentifier);
-                smallChildrenNode.add_child_with_relation(smallChildGTRelation, this.cache.get_node(entryIdentifier));
-            }
-            if (entryEnd !== null) {
-                var smallChildLTERelation = new Relation_1.Relation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, entryEnd, entryIdentifier);
-                smallChildrenNode.add_child_with_relation(smallChildLTERelation, this.cache.get_node(entryIdentifier));
-            }
-            else {
-                throw new Error("Impossible internal tree state");
-            }
-        }
-        for (var _b = 0, largeChildrenNodeEntries_1 = largeChildrenNodeEntries; _b < largeChildrenNodeEntries_1.length; _b++) {
-            var entry = largeChildrenNodeEntries_1[_b];
-            var entryIdentifier = new Identifier_1.Identifier(entry[0], null);
-            var entryStart = entry[1].start;
-            var entryEnd = entry[1].end;
-            if (entryIdentifier === null || entryIdentifier === undefined || entryIdentifier.nodeId === null || entryIdentifier.nodeId === undefined) {
-                throw new Error(" undefined entry identifier ");
-            }
-            if (entryStart !== null) {
-                var largeChildGTRelation = new Relation_1.Relation(ChildRelation_1.ChildRelation.GreaterThanRelation, entryStart, entryIdentifier);
-                largeChildrenNode.add_child_with_relation(largeChildGTRelation, this.cache.get_node(entryIdentifier));
-            }
-            else {
-                throw new Error("this should not happen 4");
-            }
-            if (entryEnd !== null) {
-                var largeChildLTERelation = new Relation_1.Relation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, entryEnd, entryIdentifier);
-                largeChildrenNode.add_child_with_relation(largeChildLTERelation, this.cache.get_node(entryIdentifier));
+        smallChildrenNode.set_members(smallMembers);
+        largeChildrenNode.set_members(largeMembers);
+        for (var _i = 0, _a = [{ entries: smallChildrenNodeEntries, node: smallChildrenNode }, { entries: largeChildrenNodeEntries, node: largeChildrenNode }]; _i < _a.length; _i++) {
+            var nodeEntries = _a[_i];
+            for (var _b = 0, _c = nodeEntries.entries; _b < _c.length; _b++) {
+                var entry = _c[_b];
+                var entryIdentifier = new Identifier_1.Identifier(entry[0], null);
+                var interval = entry[1];
+                if (entryIdentifier === null || entryIdentifier === undefined || entryIdentifier.nodeId === null || entryIdentifier.nodeId === undefined) {
+                    throw new Error(" undefined entry identifier ");
+                }
+                if (interval.start !== null && interval.startrelation !== null) {
+                    var smallrelation = new Relation_1.Relation(interval.startrelation, interval.start, entryIdentifier);
+                    nodeEntries.node.add_child_with_relation(smallrelation, this.cache.get_node(entryIdentifier));
+                }
+                if (interval.end !== null && interval.endrelation !== null) {
+                    var largerelation = new Relation_1.Relation(interval.endrelation, interval.end, entryIdentifier);
+                    nodeEntries.node.add_child_with_relation(largerelation, this.cache.get_node(entryIdentifier));
+                }
             }
         }
-        smallChildrenNode.fix_total_member_count();
-        largeChildrenNode.fix_total_member_count();
         if (nodeHasParent) {
-            parent = this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValue);
-            parent.fix_total_member_count();
+            parent = this.swapNodeChildWithNewChildren(parent, node, smallChildrenNode, largeChildrenNode, splitValueSmall, splitValueLarge, splitRelationLarge);
+            parent.add_data_no_propagation(splitMember);
             this.get_cache().delete_node(node); // delete fragment cause we will only accept one node per fragment
         }
         else {
-            var smallChildRelation = this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, splitValue, smallChildrenNode.get_identifier());
-            var largeChildRelation = this.createRelation(ChildRelation_1.ChildRelation.GreaterThanRelation, splitValue, largeChildrenNode.get_identifier());
+            var ltrelation = parentRelations.ltrelation !== null ? parentRelations.ltrelation.type : ChildRelation_1.ChildRelation.LesserOrEqualThanRelation;
+            var gtrelation = parentRelations.gtrelation !== null ? parentRelations.gtrelation.type : splitRelationLarge;
+            var smallChildRelation = this.createRelation(ltrelation, splitValueSmall, smallChildrenNode.get_identifier());
+            var largeChildRelation = this.createRelation(gtrelation, splitValueLarge, largeChildrenNode.get_identifier());
             node.add_child_with_relation(smallChildRelation, smallChildrenNode);
             node.add_child_with_relation(largeChildRelation, largeChildrenNode);
             this.set_root_node_identifier(node.get_identifier());
-            node.fix_total_member_count();
+            node.add_data_no_propagation(splitMember);
         }
+        smallChildrenNode.fix_total_member_count();
+        largeChildrenNode.fix_total_member_count();
+        parent.fix_total_member_count();
         if (parent.getRelations().length > this.max_fragment_size) {
             this.splitInternalNode(parent, value);
         }
-        var _c = this.checkRelationsMinMax(smallChildrenNode), smallstart = _c[0], smallend = _c[1];
-        var _d = this.checkRelationsMinMax(largeChildrenNode), largestart = _d[0], largeend = _d[1];
-        if (smallend !== largestart) {
-            throw new Error("SPLIT NDOE WRONG MIDDLE");
-        }
-        if (smallstart !== start || largeend !== end) {
-            throw new Error("SPLIT NODE WRONG EDGES");
-        }
-        this.checkRelationsMinMax(parent);
         return node;
     };
-    BinaryBTree.prototype.swapNodeChildWithNewChildren = function (parent, oldNode, smallChildrenNode, largeChildrenNode, splitValue) {
+    BinaryBTree.prototype.swapNodeChildWithNewChildren = function (parent, oldNode, smallChildrenNode, largeChildrenNode, splitValueSmall, splitValueLarge, splitRelationLarge) {
         var childRelations = parent.children;
         var oldNodeLTERelation = null;
         var oldNodeGTRelation = null;
         var newRelations = new Array();
-        if (splitValue === null || splitValue === undefined) {
+        if (splitValueSmall === null || splitValueSmall === undefined || splitValueLarge === null || splitValueLarge === undefined) {
             throw new Error("Null value split on node swap.");
         }
         for (var _i = 0, childRelations_1 = childRelations; _i < childRelations_1.length; _i++) {
             var relation = childRelations_1[_i];
             if (relation.identifier.nodeId === oldNode.get_node_id()) {
-                if (relation.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation) {
+                if (relation.type === ChildRelation_1.ChildRelation.LesserThanRelation || relation.type === ChildRelation_1.ChildRelation.LesserOrEqualThanRelation) {
                     oldNodeLTERelation = relation;
                 }
-                else if (relation.type === ChildRelation_1.ChildRelation.GreaterThanRelation) {
+                else if (relation.type === ChildRelation_1.ChildRelation.GreaterThanRelation || relation.type === ChildRelation_1.ChildRelation.GreaterOrEqualThanRelation) {
                     oldNodeGTRelation = relation;
                 }
                 else {
@@ -289,28 +342,35 @@ var BinaryBTree = /** @class */ (function (_super) {
         if (oldNodeLTERelation !== null && oldNodeLTERelation !== undefined && (oldNodeLTERelation.value === null || oldNodeLTERelation.value === undefined)) {
             throw new Error("Impossible relation value 1");
         }
+        /****
+         * Add relations to new Node, depending on the realtions of the old node
+         */
         if (oldNodeGTRelation !== null && oldNodeGTRelation !== undefined) {
-            newRelations.push(this.createRelation(ChildRelation_1.ChildRelation.GreaterThanRelation, oldNodeGTRelation.value, smallChildrenNode.get_identifier()));
+            newRelations.push(this.createRelation(oldNodeGTRelation.type, oldNodeGTRelation.value, smallChildrenNode.get_identifier()));
         }
-        newRelations.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, splitValue, smallChildrenNode.get_identifier()));
-        newRelations.push(this.createRelation(ChildRelation_1.ChildRelation.GreaterThanRelation, splitValue, largeChildrenNode.get_identifier()));
+        newRelations.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, splitValueSmall, smallChildrenNode.get_identifier()));
+        // let relationType = splitValueSmall === splitValueLarge? ChildRelation.GreaterOrEqualThanRelation : ChildRelation.GreaterThanRelation
+        newRelations.push(this.createRelation(splitRelationLarge, splitValueSmall, largeChildrenNode.get_identifier()));
+        // newRelations.push(this.createRelation(relationType, splitValueSmall, largeChildrenNode.get_identifier()))
         if (oldNodeLTERelation !== null && oldNodeLTERelation !== undefined) {
-            newRelations.push(this.createRelation(ChildRelation_1.ChildRelation.LesserOrEqualThanRelation, oldNodeLTERelation.value, largeChildrenNode.get_identifier()));
+            newRelations.push(this.createRelation(oldNodeLTERelation.type, oldNodeLTERelation.value, largeChildrenNode.get_identifier()));
         }
         parent.children = newRelations;
         return parent;
     };
-    BinaryBTree.prototype.addToIntervalMap = function (map, id, start, end) {
+    BinaryBTree.prototype.addToIntervalMap = function (map, id, start, end, relation) {
         if (!map.has(id)) {
-            var interval = { start: null, end: null };
+            var interval = { start: null, end: null, startrelation: null, endrelation: null };
             map.set(id, interval);
         }
         var updatedInterval = map.get(id);
         if (updatedInterval === undefined) {
-            updatedInterval = { start: null, end: null };
+            updatedInterval = { start: null, end: null, startrelation: null, endrelation: null };
         }
         updatedInterval.start = (start !== null && start !== undefined) ? start : updatedInterval.start;
         updatedInterval.end = (end !== null && end !== undefined) ? end : updatedInterval.end;
+        updatedInterval.startrelation = (start !== null && start !== undefined) ? relation.type : updatedInterval.startrelation;
+        updatedInterval.endrelation = (end !== null && end !== undefined) ? relation.type : updatedInterval.endrelation;
         map.set(id, updatedInterval);
     };
     BinaryBTree.prototype.createRelation = function (childRelation, value, identifier) {
@@ -335,6 +395,9 @@ var BinaryBTree = /** @class */ (function (_super) {
         }
         return ([sortedIntervals[0][1].start, sortedIntervals[sortedIntervals.length - 1][1].end]);
     };
+    BinaryBTree.prototype.compareMembers = function (a, b) {
+        return compare(a.get_representation(), b.get_representation());
+    };
     BinaryBTree.prototype.comparisonFunction = function (a, b) {
         if (a[1].start === null) {
             return -1;
@@ -344,16 +407,20 @@ var BinaryBTree = /** @class */ (function (_super) {
             return 1;
         }
         ;
-        if (typeof a[1].start === "string") {
+        if (a[1].end === null) {
+            return 1;
+        }
+        ;
+        if (b[1].end === null) {
+            return -1;
+        }
+        ;
+        if (a[1].start !== b[1].start) {
             return compare(a[1].start, b[1].start);
         }
-        return a[1].start - b[1].start;
-    };
-    BinaryBTree.prototype.memberNameComparisonFunction = function (a, b) {
-        if (typeof a === "string") {
-            return compare(a, b);
+        else {
+            return compare(a[1].end, b[1].end);
         }
-        return a - b;
     };
     /**
     * The given dataobject is searched in the tree.
@@ -396,9 +463,8 @@ var BinaryBTree = /** @class */ (function (_super) {
             var intervalMap = this.getIntervals(currentNode.getRelations());
             for (var _b = 0, _c = Array.from(intervalMap.entries()); _b < _c.length; _b++) {
                 var entry = _c[_b];
-                var intervalStart = entry[1].start;
-                var intervalEnd = entry[1].end;
-                if ((intervalStart === null || this.memberNameComparisonFunction(intervalStart, searchValue) < 0) && (intervalEnd === null || this.memberNameComparisonFunction(searchValue, intervalEnd) <= 0)) { // <= for end because it is a lesser than or equal
+                var interval = entry[1];
+                if (this.isInInterval(interval, searchValue, compare)) {
                     var _d = this._search_data_recursive(this.get_cache().get_node_by_id(entry[0]), searchValue), resMems = _d[0], resNodes = _d[1];
                     resultingMembers = resultingMembers.concat(resMems);
                     resultingNodes = resultingNodes.concat(resNodes);

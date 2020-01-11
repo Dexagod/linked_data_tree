@@ -47,6 +47,9 @@ var Cache = /** @class */ (function () {
         return this.last_used_cache_counter;
     };
     Cache.prototype.get_node_by_id = function (nodeId) {
+        if (nodeId === undefined) {
+            throw new Error("requesting non-existing identifyer");
+        }
         if (this.cache.has(nodeId)) {
             this.cache_hits.set(nodeId, this.assign_cache_counter());
             return this.getNodeFromCache(nodeId);
@@ -100,7 +103,6 @@ var Cache = /** @class */ (function () {
         this.nodeIO.write_node_batch(write_array);
     };
     Cache.prototype.clean_cache = function () {
-        console.log("CLEANING CACHE");
         this.cache_cleans += 1;
         var cache_values = new Array();
         for (var key in this.cache)

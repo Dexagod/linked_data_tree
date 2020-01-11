@@ -73,15 +73,18 @@ export class RTree extends Tree{
 
   private _search_data_recursive(currentNode : Node, area: terraformer.Polygon | terraformer.Point) : [Array<Member>, Array<Node>]{
     let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
-    let resultingMembers :  Array<Member> = new Array();
+    let resultingMembers :  Array<Member> = currentNode.members
     let resultingNodes :  Array<Node> = new Array();
+
+    console.log("added", currentNode.members.length)
+
+    console.log(currentNode.get_node_id(), "AREA", area)
+    
     if (childrenIdentifiers !== null) {
       let containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area)
+      console.log(containingChildren.map((e:any)=>e.value))
 
-      if (containingChildren.length === 0){
-        resultingNodes.concat(currentNode)
-        return [[], resultingNodes];
-      } else {
+      if (containingChildren.length !== 0){
         containingChildren.forEach(child => {
           let [resMems, resNodes] = this._search_data_recursive(child, area)
           resultingMembers = resultingMembers.concat(resMems)
@@ -90,11 +93,6 @@ export class RTree extends Tree{
 
       }
     } 
-    currentNode.members.forEach(tdo => {
-      if (this.isContained(tdo.get_representation(), area)){
-        resultingMembers.push(tdo)
-      }
-    })
     resultingNodes.push(currentNode)
     return [resultingMembers, resultingNodes]
   }

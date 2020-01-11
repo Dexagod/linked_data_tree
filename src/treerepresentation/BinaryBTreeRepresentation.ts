@@ -10,7 +10,4 @@ export class BinaryBTreeRepresentation extends TreeRepresentation{
     return new BinaryBTree(maxFragmentSize, fc);
   }
 
-  addData(representation: any, data: any, dataRepresentation : any = representation) : Node | null {
-    return this.tree.addData(representation, new Member(dataRepresentation, data))
-  }
 }
