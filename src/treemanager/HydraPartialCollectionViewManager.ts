@@ -18,25 +18,16 @@ import { HydraNodeIO } from '../IO/HydraNodeIO';
  *    }
  */
 export class HydraPartialCollectionViewManager extends TreeManager{
-  createTreeRepresentation(tree :Tree,
-                            sourceDirectory: string,
-                            dataFolder: string,
-                            maxCachedFragments: number,
-                            maxFragmentSize: number,
-                            nodeIO : NodeIO): TreeRepresentation{
-    return new HydraPartialCollectionViewRepresentation(tree, 
-                            sourceDirectory, 
-                            dataFolder, 
-                            maxCachedFragments, 
-                            maxFragmentSize, 
-                            nodeIO)
-}
+ 
+  getTreeRepresentationObjectPrototype() : any{
+    return HydraPartialCollectionViewRepresentation;
+  }
 
   getTreeObjectPrototype() {
     return HydraPartialCollectionView;
   }
 
-  getNodeIOObject(sourceDirectory : string, dataFolder : string, nodePath : any){
-    return new HydraNodeIO(sourceDirectory, dataFolder, nodePath)
+  getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath : any, writeMetadata : boolean): NodeIO {
+    return new HydraNodeIO(sourceDirectory, dataFolder, nodePath, writeMetadata)
   }
 }

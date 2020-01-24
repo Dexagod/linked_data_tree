@@ -15,19 +15,10 @@ import { WKTNodeIO } from '../IO/WKTNodeIO';
  *    }
  */
 export class RTreeManager extends TreeManager{
-  createTreeRepresentation(tree :Tree,
-                            sourceDirectory: string,
-                            dataFolder: string,
-                            maxCachedFragments: number,
-                            maxFragmentSize: number,
-                            nodeIO : NodeIO): TreeRepresentation{
-    return new RTreeRepresentation(tree, 
-                            sourceDirectory, 
-                            dataFolder, 
-                            maxCachedFragments, 
-                            maxFragmentSize, 
-                            nodeIO)
-}
+
+  getTreeRepresentationObjectPrototype() : any{
+    return RTreeRepresentation;
+  }
 
   getTreeObjectPrototype() {
     return RTree;

@@ -44,6 +44,27 @@ export class PrefixTree extends Tree {
 
   private splitNode(node : Node, addedString : string, childValue : string) : Node {
 
+    let members = node.get_members();
+    let newmembers = []
+    for (let member of members){
+      let found = false;
+      for (let relation of node.getRelations()){
+        if (member.get_representation().startsWith(relation.value)){
+          this.recursiveAddition(this.get_cache().get_node(relation.identifier), member, member.get_representation(), relation.value)
+          found = true;
+        }
+      }
+      if (! found){
+        newmembers.push(member)
+      }
+      node.set_members(newmembers)
+      node.fix_total_member_count()
+    }
+
+    if (this.checkNodeSplit(node)  === false){
+      return node;
+    }
+
     let newNodeMembers = new Array<any>()
     let potentialSplitMembers = new Array();
     for (let member of node.get_members()){

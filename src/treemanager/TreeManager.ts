@@ -27,7 +27,7 @@ export abstract class TreeManager {
                 nodeShaclPath: any,
                 maxCachedFragments: number,
                 maxFragmentSize: number): TreeRepresentation {
-    let nodeIO = this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath)
+    let nodeIO = this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath, true)
     let tree = nodeIO.readTree(this.getTreeObjectPrototype());
     return this.createTreeRepresentation(tree,
                                           sourceDirectory, 
@@ -48,31 +48,36 @@ export abstract class TreeManager {
                 dataFolder: string,
                 nodeShaclPath: any,
                 maxCachedFragments: number,
-                maxFragmentSize: number): TreeRepresentation {
+                maxFragmentSize: number,
+                writeMetadata:boolean = true): TreeRepresentation {
     return this.createTreeRepresentation(null,
                                           sourceDirectory, 
                                           dataFolder, 
                                           maxCachedFragments, 
                                           maxFragmentSize, 
-                                          this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath));
+                                          this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath, writeMetadata));
   }
 
+  abstract getTreeRepresentationObjectPrototype(): any;
 
-  abstract createTreeRepresentation(tree : Tree | null,
-                                      sourceDirectory: string,
-                                      dataFolder: string,
-                                      maxCachedFragments: number,
-                                      maxFragmentSize: number,
-                                      nodeIO : NodeIO): TreeRepresentation
+  createTreeRepresentation(tree : Tree | null,
+    sourceDirectory: string,
+    dataFolder: string,
+    maxCachedFragments: number,
+    maxFragmentSize: number,
+    nodeIO : NodeIO): TreeRepresentation {
+      let treeRepresentationObjectPrototype = this.getTreeRepresentationObjectPrototype();
+      return new treeRepresentationObjectPrototype(tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO)
+    }
 
   abstract getTreeObjectPrototype(): any;
 
-  private getNodeIO(sourceDirectory: string, dataFolder: string, nodePath : any): NodeIO {
-    return this.getNodeIOObject(sourceDirectory, dataFolder, nodePath);
+  private getNodeIO(sourceDirectory: string, dataFolder: string, nodePath : any, writeMetadata : boolean): NodeIO {
+    return this.getNodeIOObject(sourceDirectory, dataFolder, nodePath, writeMetadata);
   }
 
-  protected getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath : any): NodeIO {
-    return new NodeIO(sourceDirectory, dataFolder, nodePath)
+  protected getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath : any, writeMetadata : boolean): NodeIO {
+    return new NodeIO(sourceDirectory, dataFolder, nodePath, writeMetadata)
   }
 
 }

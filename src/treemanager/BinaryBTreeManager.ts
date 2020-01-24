@@ -6,18 +6,9 @@ import { BinaryBTree } from '../Tree/BinaryBTree';
 import { NodeIO } from '../IO/NodeIO';
 
 export class BinaryBTreeManager extends TreeManager{
-  createTreeRepresentation(tree :Tree,
-                            sourceDirectory: string,
-                            dataFolder: string,
-                            maxCachedFragments: number,
-                            maxFragmentSize: number,
-                            nodeIO : NodeIO): TreeRepresentation{
-    return new BinaryBTreeRepresentation(tree, 
-                            sourceDirectory, 
-                            dataFolder, 
-                            maxCachedFragments, 
-                            maxFragmentSize, 
-                            nodeIO)
+  
+  getTreeRepresentationObjectPrototype() : any{
+    return BinaryBTreeRepresentation;
   }
 
   getTreeObjectPrototype() {

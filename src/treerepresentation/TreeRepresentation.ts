@@ -4,9 +4,10 @@ import { Member } from "../DataObjects/Member"
 import { NodeIO } from '../IO/NodeIO';
 import { Node } from '../Node/Node';
 export abstract class TreeRepresentation{
-    tree : Tree;
-    sourceDirectory : string;
-    dataFolder : string;
+    
+    public tree : Tree;
+    public sourceDirectory : string;
+    public dataFolder : string;
 
     constructor(tree: Tree | null | undefined, 
                 sourceDirectory: string, 
@@ -33,7 +34,7 @@ export abstract class TreeRepresentation{
      * @param {string} representation 
      * @param {any} data 
      */
-    addData(representation: any, data: any, dataRepresentation : any = representation, triplesSize: number = 1) : Node | null {
+    addData(representation: any, data: any, triplesSize: number = 1, dataRepresentation : any = representation) : Node | null {
         return this.tree.addData(representation, new Member(dataRepresentation, data, triplesSize))
     }
 

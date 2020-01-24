@@ -103,19 +103,6 @@ export class HydraNodeIO extends NodeIO{
 
     return tree
   }
-
-  
-  encode_wrapper(encodedNode : any, encodedMembers: any, encodedMembersMetadata : any, totalItems = 0){
-    return {
-      "@context": context,
-      "@id": this.getCollectionId(),
-      "@type" : "hydra:Collection",
-      "tree:remainingItems" : totalItems,
-      "hydra:view" : encodedNode,
-      "hydra:member" : encodedMembers,
-      "memberMetadata" : encodedMembersMetadata,
-    }
-  }
   
   decode_wrapper(wrapper : any){
     let node = wrapper["hydra:view"]
@@ -253,7 +240,14 @@ export class HydraNodeIO extends NodeIO{
   }
 
   getNodeLocation(nodeId: string){
-    return this.sourceDirectory + nodeId
+    let location = this.sourceDirectory + nodeId
+
+    let nodelocation : any = location.split("/")
+    let nodeDirectory = nodelocation.slice(0, nodelocation.length-1).join("/")
+    if (!fs.existsSync(nodeDirectory)) {
+        fs.mkdirSync(nodeDirectory, {recursive : true});  
+    }
+    return location
     // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }

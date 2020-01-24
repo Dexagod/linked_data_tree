@@ -20,22 +20,25 @@ var context = {
   "members": "hydra:member",
   "children": "tree:relation",
   "geo" : "http://www.w3.org/2003/01/geo/wgs84_pos#",
-  "shacl" : "http://www.w3.org/ns/shacl#"
+  "shacl" : "http://www.w3.org/ns/shacl#",
+  "ex" : "http://example.com#"
 }
 
 export class NodeIO{
     sourceDirectory: string;
     dataFolder: string;
     shaclPath : any;
+    writeMetadata: boolean;
   /**
    * Initialize the fragment IO managing object.
    * @param {string} sourceDirectory - The source directory where all data of this tree is stored.
    * @param {string} dataFolder - The subfolder of the source directory where the fragments are stored.
    */
-  constructor(sourceDirectory: string, dataFolder: string, shaclPath : any){
+  constructor(sourceDirectory: string, dataFolder: string, shaclPath : any, writeMetadata: boolean = true){
     this.sourceDirectory = sourceDirectory;
     this.dataFolder = dataFolder;
     this.shaclPath = shaclPath;
+    this.writeMetadata = writeMetadata;
   }
 
 
@@ -54,6 +57,7 @@ export class NodeIO{
   }
   
   write_node(node: Node) {
+
     let location = this.getNodeLocation(node.get_node_id())
     let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
     let wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
@@ -77,7 +81,11 @@ export class NodeIO{
     let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
     let wrapper : any = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
     let treeMetadata = [tree.max_fragment_size, tree.node_count, tree.options]  
-    wrapper["treeMetadata"] = treeMetadata
+    
+    if (this.writeMetadata){
+      wrapper["treeMetadata"] = treeMetadata
+    }
+
     let JSONSTRING = JSON.stringify(wrapper, function(key, value) {
         return (key == 'fc') ? undefined : value;
     });
@@ -103,7 +111,6 @@ export class NodeIO{
     tree["max_fragment_size"] = max_fragment_size
     tree["node_count"] = node_count
     tree["options"] = options
-    tree["options"] = options
     Object.setPrototypeOf(tree, prototypeObject.prototype)
 
     return tree
@@ -111,14 +118,25 @@ export class NodeIO{
 
   
   encode_wrapper(encodedNode : any, encodedMembers: any, encodedMembersMetadata : any, totalItems = 0){
-    return {
-      "@context": context,
-      "@id": this.getCollectionId(),
-      "@type" : "hydra:Collection",
-      "tree:remainingItems" : totalItems,
-      "hydra:view" : encodedNode,
-      "hydra:member" : encodedMembers,
-      "memberMetadata" : encodedMembersMetadata,
+    if (this.writeMetadata){
+      return {
+        "@context": context,
+        "@id": this.getCollectionId(),
+        "@type" : "hydra:Collection",
+        "tree:remainingItems" : totalItems,
+        "hydra:view" : encodedNode,
+        "hydra:member" : encodedMembers,
+        "memberMetadata" : encodedMembersMetadata,
+      }
+    } else {
+      return {
+        "@context": context,
+        "@id": this.getCollectionId(),
+        "@type" : "hydra:Collection",
+        "tree:remainingItems" : totalItems,
+        "hydra:view" : encodedNode,
+        "hydra:member" : encodedMembers
+      }
     }
   }
   
@@ -229,6 +247,9 @@ export class NodeIO{
     if (relation.path === null){
       relation.path = this.shaclPath;
     }
+  
+    if (relation.identifier.nodeId === "/rtree_streets/1/node76.jsonld"){
+    }
     return  {
       "@type" : this.relationToString(relation.type),
       "tree:node" : { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
@@ -251,7 +272,14 @@ export class NodeIO{
   }
 
   getNodeLocation(nodeId: string){
-    return this.sourceDirectory + nodeId
+    let location = this.sourceDirectory + nodeId
+
+    let nodelocation : any = location.split("/")
+    let nodeDirectory = nodelocation.slice(0, nodelocation.length-1).join("/")
+    if (!fs.existsSync(nodeDirectory)) {
+        fs.mkdirSync(nodeDirectory, {recursive : true});  
+    }
+    return location
     // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
   }

@@ -186,10 +186,13 @@ export class Node {
 
     // Updates the child node.
     // Used when child changes fragment, so the parent needs to update the child fragment id in its children.
-    update_child(oldIdentifier : Identifier, newIdentifier : Identifier) {
+    update_child(oldIdentifier : Identifier, newIdentifier : Identifier, value:any = null) {
         for (let relation of this.children){
             if (relation.identifier.equals(oldIdentifier)){
                 relation.identifier = newIdentifier
+                if (value !== null){
+                    relation.value = value;
+                }
             }
         }
     }

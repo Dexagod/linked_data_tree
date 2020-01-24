@@ -39,7 +39,13 @@ export abstract class Tree {
      * @param {Node} node 
      */
     provide_node_id(): string {
+
         let id = "/" + this.cache.dataFolder + "node" + this.node_count.toString() + ".jsonld"
+        if (this.node_count > 0){
+            let nodefolder = (Math.ceil(this.node_count / 1000)).toString()
+            id = "/" + this.cache.dataFolder + nodefolder + "/node" + this.node_count.toString() + ".jsonld"
+        }
+        
         this.node_count ++
         return id
         // return this.node_count++;
@@ -115,8 +121,15 @@ export abstract class Tree {
         this.root_node_identifier = identifier;
     }
 
+    // checkNodeSplit(node: Node) : boolean{
+    //     if (node.get_members().map(e=>e.size).reduce((a:number, b:number) => a+b, 0) > this.max_fragment_size) {
+    //         return true
+    //     }
+    //     return false;
+    // }
+    
     checkNodeSplit(node: Node) : boolean{
-        if (node.get_members().map(e=>e.size).reduce((a:number, b:number) => a+b, 0) > this.max_fragment_size) {
+        if (node.get_members().length > this.max_fragment_size) {
             return true
         }
         return false;

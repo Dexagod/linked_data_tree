@@ -6,19 +6,10 @@ import { PrefixTreeRepresentation } from '../treerepresentation/PrefixTreeRepres
 import { NodeIO } from '../IO/NodeIO';
 
 export class PrefixTreeManager extends TreeManager{
-  createTreeRepresentation(tree :Tree,
-    sourceDirectory: string,
-    dataFolder: string,
-    maxCachedFragments: number,
-    maxFragmentSize: number,
-    nodeIO : NodeIO): TreeRepresentation{
-return new PrefixTreeRepresentation(tree, 
-    sourceDirectory, 
-    dataFolder, 
-    maxCachedFragments, 
-    maxFragmentSize, 
-    nodeIO)
-}
+
+  getTreeRepresentationObjectPrototype() : any{
+    return PrefixTreeRepresentation;
+  }
 
   getTreeObjectPrototype() : any {
     return PrefixTree;

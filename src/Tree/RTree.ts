@@ -4,37 +4,66 @@ import { Node } from '../Node/Node';
 import { ChildRelation } from '../Relations/ChildRelation';
 
 import * as terraformer from 'terraformer'
+// import * as terraformer from 'terraformer'
 import { Identifier } from '../Identifier';
+import { Relation } from '../Relation';
 
 export class RTree extends Tree{
 
   addData(representation: any, member: Member): Node | null {
+    let result = null
     if(this.node_count === 0) {
-      return this.createFirstNode(representation, member)
+      result = this.createFirstNode(representation, member)
+      let rootNode = this.get_root_node()
+      rootNode.identifier.value = this.createBoundingBox([rootNode.identifier.value.bbox(), member.get_representation().bbox()])
+    } else {
+      let rootNode = this.get_root_node()
+      if (! this.isContained(member.get_representation(), rootNode.identifier.value)){
+        rootNode.identifier.value = this.createBoundingBox([rootNode.identifier.value.bbox(), member.get_representation().bbox()])
+      }
+      result = this.recursiveAddition(this.get_root_node(), member)
+      // this.checkTree()
     }
-    return this.recursiveAddition(this.get_root_node(), member)
+    return result
   }  
 
   private recursiveAddition(currentNode : Node, member : Member) : Node {
-
+    let node = null;
     if (currentNode.has_child_relations()){
       let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation);
       if (childrenIdentifiers !== null) { // Node has childRelations of type GeospaciallyContainsRelation
         let containingChild = this.findContainingChild(childrenIdentifiers, member.get_representation())
         // Geen child node die de nieuwe data containt
         if (containingChild !== null) {
-          return this.recursiveAddition(containingChild, member);
-        }
-        let foundNode = this.findClosestBoundingBoxIndex(currentNode, member.get_representation());
-        if (foundNode.get_node_id() === currentNode.get_node_id()){
-          return this.addMemberToNode(currentNode, member)
+          // Make sure that this node contains new object
+
+          //TEST
+          if (! this.isContained(member.get_representation(), currentNode.identifier.value)) { throw new Error("Uncontained member in tree construction")}
+
+
+          node = this.recursiveAddition(containingChild, member);
         } else {
-          return this.recursiveAddition(foundNode, member)
+          let foundNode = this.findClosestBoundingBoxIndex(currentNode, member.get_representation());
+          if (foundNode.get_node_id() === currentNode.get_node_id()){
+            node = this.addMemberToNode(currentNode, member)
+          } else {
+            
+            //TEST
+            if (! this.isContained(member.get_representation(), currentNode.identifier.value)) { 
+              throw new Error("Uncontained member in tree construction") 
+            }
+
+            node = this.recursiveAddition(foundNode, member)
+          }
         }
       } 
     } 
+    if (node === null){
+      node = this.addMemberToNode(currentNode, member)
+    }
     // Node is a leaf node (does not have any children of type GeospaciallyContainsRelation)
-    return this.addMemberToNode(currentNode, member)
+    this.assertNode(currentNode)
+    return node;
   }
 
   addMemberToNode(currentNode : Node, member : Member){
@@ -42,9 +71,16 @@ export class RTree extends Tree{
       let currentNodeBBox = currentNode.get_identifier().value.bbox()
       let dataBBox = member.get_representation().bbox()
       if (currentNodeBBox === undefined || dataBBox === undefined) {throw new Error("bbox was undefined")}
-      currentNode.identifier.value = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
+
+      let oldIdentifier : any = {...currentNode.identifier}
+      let newValue = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
+      currentNode.identifier.value = newValue;
+      if (currentNode.has_parent_node()){ currentNode.get_parent_node().update_child(oldIdentifier, currentNode.identifier, currentNode.identifier.value) }
     }
     currentNode.add_data(member);
+
+
+    this.assertNode(currentNode)
     
     if (this.checkNodeSplit(currentNode)) {
       return this.splitNode(currentNode, member)
@@ -76,28 +112,20 @@ export class RTree extends Tree{
     let resultingMembers :  Array<Member> = currentNode.members
     let resultingNodes :  Array<Node> = new Array();
 
-    console.log("added", currentNode.members.length)
 
-    console.log(currentNode.get_node_id(), "AREA", area)
-    
     if (childrenIdentifiers !== null) {
       let containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area)
-      console.log(containingChildren.map((e:any)=>e.value))
-
-      if (containingChildren.length !== 0){
-        containingChildren.forEach(child => {
-          let [resMems, resNodes] = this._search_data_recursive(child, area)
-          resultingMembers = resultingMembers.concat(resMems)
-          resultingNodes = resultingNodes.concat(resNodes)
-        });
-
-      }
+      for (let child of containingChildren){
+        let [resMems, resNodes] = this._search_data_recursive(child, area)
+        resultingMembers = resultingMembers.concat(resMems)
+        resultingNodes = resultingNodes.concat(resNodes)
+      };
     } 
     resultingNodes.push(currentNode)
     return [resultingMembers, resultingNodes]
   }
 
-  private findClosestBoundingBoxIndex(currentNode : Node, dataWKTstring : any) : Node {
+  private findClosestBoundingBoxIndex(currentNode : Node, dataGeoObject : any) : Node {
 
     let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation);
     if (childrenIdentifiers === null ){ throw new Error("impossible") }
@@ -107,7 +135,7 @@ export class RTree extends Tree{
     let smallestBoundingBox = null;
     let smallestSizeDifference = Infinity;
     
-    let dataBoundingBox = dataWKTstring.bbox()
+    let dataBoundingBox = dataGeoObject.bbox()
     if (dataBoundingBox === undefined) {throw new Error("undefined bounding box for the given data")}
 
     for (let i = 0; i < boundingBoxList.length; i++){
@@ -125,18 +153,24 @@ export class RTree extends Tree{
       }
     }
 
-    let currentNodeBBox = currentNode.get_identifier().value.bbox();
-    let expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, currentNodeBBox)
-
     if (smallestBoundingBox === null){
       throw new Error("couldnt split node")
     } else {
+      /**
+       * Update the child node value with least expanding bounding box on addition of new member, because member is going to be added to that node
+      */ 
       let oldIdentifier = childrenIdentifiers[smallestBoundingBoxIndex]
       let newValue = this.bboxToGeoJSON(smallestBoundingBox) 
       let newIdentifier = new Identifier(oldIdentifier.nodeId, newValue)
-      currentNode.update_child(oldIdentifier, newIdentifier)
+      currentNode.update_child(oldIdentifier, newIdentifier, newIdentifier.value)
       let node = this.get_cache().get_node(oldIdentifier);
+
       node.identifier.value = newValue
+
+      if(! this.isContained(dataGeoObject, newValue)){
+        throw new Error("NOT CONTAINED ON FINDCLOSESTCHILD")
+      }
+
       return node;
     }
   }
@@ -150,7 +184,6 @@ export class RTree extends Tree{
       // We are splitting a leaf node, and have to devide the Members
       return this.splitLeafNode(node, addedMember);
 
-
     } else {
       // We are splitting an internal node, and have to devide the children
       return this.splitInnerNode(node)
@@ -161,7 +194,6 @@ export class RTree extends Tree{
 
 
   private splitLeafNode(node : Node, addedMember: Member | null){
-
     let parent = null;
     let splitNode1 = null;
     let splitNode2 = null;
@@ -174,23 +206,32 @@ export class RTree extends Tree{
 
     items.sort((a, b) => (this.getBBox(a.get_representation())[splitAxis] > this.getBBox(b.get_representation())[splitAxis]) ? 1 : -1)
   
-    let node2items = items.splice(Math.floor(items.length / 2), items.length);
+    let node1items = items.slice(0, Math.floor(items.length / 2));
+    let node2items = items.slice(Math.floor(items.length / 2), items.length);
 
     parent = node;
     if (node.has_parent_node()){
       parent = node.get_parent_node()
+      this.assertNode(parent)
+      
     }
-    let node1value = this.createBoundingBox(items.map(e=>this.getBBox(e.get_representation())))
+    let node1value = this.createBoundingBox(node1items.map(e=>this.getBBox(e.get_representation())))
     let node2value = this.createBoundingBox(node2items.map(e=>this.getBBox(e.get_representation())))
     splitNode1 = new Node(node1value, parent, this)
     splitNode2 = new Node(node2value, parent, this)
 
-    splitNode1.set_members(items)
+
+    this.assertNode(node)
+
+    if (! (this.isContained(node1value, parent.identifier.value) &&  this.isContained(node2value, parent.identifier.value))){
+      throw new Error("Child node not contained on split")
+    }
+
+    splitNode1.set_members(node1items)
     splitNode2.set_members(node2items)
     
     splitNode1.fix_total_member_count()
     splitNode2.fix_total_member_count()
-    
 
     if (node.has_parent_node()){
       let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
@@ -200,16 +241,16 @@ export class RTree extends Tree{
       parent.fix_total_member_count()
       this.get_cache().delete_node(node) // delete fragment cause we will only accept one node per fragment
     } else {
-
       node.clear()
-
       node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode1, node1value)
       node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
       node.fix_total_member_count()
       this.set_root_node_identifier(node.get_identifier())
-
       parent = node;
     }
+
+    
+    this.assertNode(parent)
 
     if (parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation).length >= this.max_fragment_size) {
       this.splitNode(parent, null);
@@ -232,7 +273,6 @@ export class RTree extends Tree{
 
 
   private splitInnerNode(node: Node){
-
     let parent = null;
     let splitNode1 = null;
     let splitNode2 = null;
@@ -285,6 +325,7 @@ export class RTree extends Tree{
       parent = node;
       node.clear()
       let nodeValue = this.createBoundingBox([node1value.bbox(), node2value.bbox()])
+      
       node.identifier.value = nodeValue
     }
 
@@ -308,6 +349,29 @@ export class RTree extends Tree{
     splitNode1.fix_total_member_count()
     splitNode2.fix_total_member_count()
 
+
+
+    for (let member of node1members){
+      if (! this.isContained(member.representation, node1value)){
+        throw new Error("LEAF SPLIT ERROR 1")
+      }
+    }
+    for (let member of node2members){
+      if (! this.isContained(member.representation, node2value)){
+        throw new Error("LEAF SPLIT ERROR 2")
+      }
+    }
+    for (let childIdentifier of node1childrenIdentifiers){
+      if (! this.isContained(childIdentifier.value, node1value)){
+       throw new Error("LEAF SPLIT ERROR 3")
+      }
+    }
+    for (let childIdentifier of node2childrenIdentifiers){
+      if (! this.isContained(childIdentifier.value, node2value)){
+        throw new Error("LEAF SPLIT ERROR 4")
+      }
+    }
+
     if (node.has_parent_node()){
 
       let relationsList = [ChildRelation.GeospatiallyContainsRelation, ChildRelation.GeospatiallyContainsRelation]
@@ -322,6 +386,9 @@ export class RTree extends Tree{
       node.add_child(ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value)
       this.set_root_node_identifier(node.get_identifier())
     }
+
+    
+    this.assertNode(parent)
 
     parent.fix_total_member_count()
     let parentChildren = parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)
@@ -379,14 +446,36 @@ export class RTree extends Tree{
     return children;
   }
 
-  private isContained(dataGeoObject : terraformer.Polygon | terraformer.Point, childGeoObject : terraformer.Polygon | terraformer.Point) : boolean {
-      if (childGeoObject instanceof terraformer.Point)  { return false } // Point cannot contain other polygon or point
-      let childWKTPrimitive = new terraformer.Primitive(childGeoObject)
+  private isContained(contined_object : any, container : any) : boolean {
+      // if (childGeoObject instanceof terraformer.Point)  { return false } // Point cannot contain other polygon or point
       try {
-        return (childWKTPrimitive.contains(dataGeoObject))
+        if (! container.contains(contined_object)){
+          let bbox = container.bbox();
+          if (contined_object instanceof terraformer.Point){
+            return this.bboxContainsPoint(bbox, contined_object.coordinates)
+          } else if (contined_object instanceof terraformer.Polygon){
+            for (let coordinate of contined_object.coordinates[0]){
+              if (! this.bboxContainsPoint(bbox, coordinate)){
+                return false;
+              }
+            }
+            return true
+          }
+          return false
+        } else {
+          return true;
+        }
       } catch(err){
           return false;
       }
+  }
+
+  private bboxContainsPoint(bbox: any, pointCoordinates: any){
+    if ((bbox[0] <= pointCoordinates[0] && pointCoordinates[0] <= bbox[2]) &&
+    (bbox[1] <= pointCoordinates[1] && pointCoordinates[1] <= bbox[3])){
+      return true;
+    }
+    return false;
   }
 
 
@@ -487,5 +576,50 @@ export class RTree extends Tree{
     return maxDItemIndices;
   }
 
+  checkNode(node : Node){
+    if (node.identifier.nodeId === "/rtree_streets/1/node76.jsonld" || node.identifier.nodeId === "/rtree_streets/1/node99.jsonld"){
+    }
+    for (let member of node.get_members()){
+      if (! this.isContained(member.get_representation(), node.identifier.value)){
+        return false;
+      } 
+    }
+    for (let relation of node.getRelations()){
+      if (! this.isContained(relation.value, node.identifier.value)){
+        return false
+      }
+    }
+    if (node.has_parent_node()){
+      for (let relation of node.get_parent_node().getRelations()){
+        if (relation.identifier.nodeId === node.identifier.nodeId){
+          if (relation.identifier.value !== node.identifier.value){
+            throw new Error("not the same values")
+          }
+        }
+      }
+    }
+    return true;
+  }
 
+  checkNodeRecusive(node : Node){
+    this.assertNode(node);
+    for (let relation of node.getRelations()){
+     this.checkNodeRecusive(this.cache.get_node(relation.identifier));
+    }
+
+  }
+
+  checkTree(){
+    let rootNode = this.get_root_node()
+    this.checkNodeRecusive(rootNode)
+  }
+
+  assertNode(node:Node){
+    if (! this.checkNode(node)){
+      throw new Error("Error asserting Node")
+    }
+  }
 }
+
+
+
