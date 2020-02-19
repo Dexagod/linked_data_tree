@@ -195,8 +195,7 @@ export class NodeIO{
 
     let member_list = [];
     for (var j = 0; j < members.length; j++){
-      let member = this.decode_member(members[j])
-      member.representation = membersMetadata[j]
+      let member = this.decode_member(members[j], membersMetadata[j])
       member_list.push(member)
     }
     node["members"] = member_list
@@ -221,6 +220,7 @@ export class NodeIO{
     node["fc"] = fc
     node["remainingItems"] = node["tree:remainingItems"]
 
+    if (node["parent_node"] === undefined) { node ["parent_node"] = null}
     
     // delete node["@graph"]
     delete node.members_metadata;
@@ -233,12 +233,13 @@ export class NodeIO{
     return [member.contents, this.encode_tdo_value(member.representation), member.size]
   }
 
-  decode_member(member: any): Member{
-    Object.setPrototypeOf(member, Member.prototype)
-    if (member.representation !== undefined) {
-      member.representation = this.decode_tdo_value(member.representation)
-    }
-    return member
+  decode_member(member: any, representation: any): Member{
+    let memberObject : any = {}
+    memberObject["size"] = 1
+    memberObject["contents"] = member
+    memberObject["representation"] = this.decode_tdo_value(representation)
+    Object.setPrototypeOf(memberObject, Member.prototype)
+    return memberObject
   }
 
   encode_relation(relation : Relation){

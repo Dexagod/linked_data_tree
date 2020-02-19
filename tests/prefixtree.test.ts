@@ -63,7 +63,7 @@ describe('Prefix Tree tests', () => {
           let found = false
           for (let i = 0; i < representations.length; i++){
             let entry : any = representations[i]
-            if (entry["@id"] === identifier["@id"]) {
+            if (entry["contents"]["@id"] === identifier["@id"]) {
               found = true;
             }
           }
@@ -73,18 +73,12 @@ describe('Prefix Tree tests', () => {
     }
   })
   
-
-
-
-  
   it('checking total children count in each node to be the sum of the child items ', () => {
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
     let rootNode = newtree.getTreeObject().get_root_node()
     checkItems(rootNode, 0)
   
   })
-  
-
 });
 
 var rootNodeDepth : number | null = null

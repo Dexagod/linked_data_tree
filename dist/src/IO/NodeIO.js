@@ -171,8 +171,7 @@ var NodeIO = /** @class */ (function () {
         delete node["@type"];
         var member_list = [];
         for (var j = 0; j < members.length; j++) {
-            var member = this.decode_member(members[j]);
-            member.representation = membersMetadata[j];
+            var member = this.decode_member(members[j], membersMetadata[j]);
             member_list.push(member);
         }
         node["members"] = member_list;
@@ -193,6 +192,9 @@ var NodeIO = /** @class */ (function () {
         }
         node["fc"] = fc;
         node["remainingItems"] = node["tree:remainingItems"];
+        if (node["parent_node"] === undefined) {
+            node["parent_node"] = null;
+        }
         // delete node["@graph"]
         delete node.members_metadata;
         delete node["metadataValue"];
@@ -202,12 +204,13 @@ var NodeIO = /** @class */ (function () {
     NodeIO.prototype.encode_member = function (member) {
         return [member.contents, this.encode_tdo_value(member.representation), member.size];
     };
-    NodeIO.prototype.decode_member = function (member) {
-        Object.setPrototypeOf(member, Member_1.Member.prototype);
-        if (member.representation !== undefined) {
-            member.representation = this.decode_tdo_value(member.representation);
-        }
-        return member;
+    NodeIO.prototype.decode_member = function (member, representation) {
+        var memberObject = {};
+        memberObject["size"] = 1;
+        memberObject["contents"] = member;
+        memberObject["representation"] = this.decode_tdo_value(representation);
+        Object.setPrototypeOf(memberObject, Member_1.Member.prototype);
+        return memberObject;
     };
     NodeIO.prototype.encode_relation = function (relation) {
         // TODO:: set shacl path

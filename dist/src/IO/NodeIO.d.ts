@@ -69,7 +69,7 @@ export declare class NodeIO {
     encode_node(node: Node): any;
     decode_node(node: any, members: any, membersMetadata: any, fc: Cache): any;
     encode_member(member: Member): any[];
-    decode_member(member: any): Member;
+    decode_member(member: any, representation: any): Member;
     encode_relation(relation: Relation): {
         "@type": string;
         "tree:node": {

@@ -70,7 +70,7 @@ describe('RTree tests', () => {
         // 
         for (let i = 0; i < foundreps.length; i++){
           let item : any = foundreps[i]
-          if (item["@id"] === dataObject["@id"]) {
+          if (item["contents"]["@id"] === dataObject["@id"]) {
             found = true;
           }
         }
@@ -82,8 +82,6 @@ describe('RTree tests', () => {
       }
     }
   })
-
-
   
   it('checking total children count in each node to be the sum of the child items ', () => {
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
@@ -91,8 +89,6 @@ describe('RTree tests', () => {
     checkItems(rootNode, 0)
   
   })
-  
-
 });
 
 

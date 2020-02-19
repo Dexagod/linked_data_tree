@@ -59,7 +59,7 @@ describe('Binary Tree numbers tests', () => {
           let found = false
           for (let i = 0; i < foundreps.length; i++){
             let entry : any = foundreps[i]
-            if (entry["@id"] === identifier["@id"]) {
+            if (entry["contents"]["@id"] === identifier["@id"]) {
               found = true;
             }
           }

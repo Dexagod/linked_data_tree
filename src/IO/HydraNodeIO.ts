@@ -169,8 +169,7 @@ export class HydraNodeIO extends NodeIO{
 
     let member_list = [];
     for (var j = 0; j < members.length; j++){
-      let member = this.decode_member(members[j])
-      member.representation = membersMetadata[j]
+      let member = this.decode_member(members[j], membersMetadata[j])
       member_list.push(member)
     }
     node["members"] = member_list
@@ -198,40 +197,6 @@ export class HydraNodeIO extends NodeIO{
     delete node["tree:remainingItems"]
     delete node["hydra:next"]
     return node;
-  }
-
-  encode_member(member: Member){
-    return [member.contents, this.encode_tdo_value(member.representation)]
-  }
-
-  decode_member(member: any): Member{
-    Object.setPrototypeOf(member, Member.prototype)
-    if (member.representation !== undefined) {
-      member.representation = this.decode_tdo_value(member.representation)
-    }
-    return member
-  }
-
-  encode_relation(relation : Relation){
-    // TODO:: set shacl path
-    if (relation.path === null){
-      relation.path = this.shaclPath;
-    }
-    return  {
-      "@type" : this.relationToString(relation.type),
-      "tree:node" : { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
-      "shacl:path" : relation.path,
-      "value" : this.encode_node_value(relation.value),
-    }
-  }
-
-  decode_relation(childRelationObject : any){
-    // TODO:: process shacl path
-    let relationType = this.stringToRelation(childRelationObject["@type"].substring(5))
-    let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]["@id"], this.decode_node_value(childRelationObject["value"]))
-    let relationValue = this.decode_node_value(childRelationObject["value"])
-    let shaclPath = childRelationObject["shacl:path"]
-    return new Relation(relationType, relationValue, relationIdentifier, shaclPath)
   }
 
   getCollectionId(){

@@ -51,6 +51,7 @@ describe('Binary Tree String tests', function () {
                 var found = false;
                 for (var i = 0; i < foundreps.length; i++) {
                     var entry_1 = foundreps[i];
+                    console.log(entry_1);
                     if (entry_1["@id"] === identifier_1["@id"]) {
                         found = true;
                     }
