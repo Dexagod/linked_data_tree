@@ -62,7 +62,7 @@ export class RTree extends Tree{
       node = this.addMemberToNode(currentNode, member)
     }
     // Node is a leaf node (does not have any children of type GeospaciallyContainsRelation)
-    this.assertNode(currentNode)
+    // this.assertNode(currentNode)
     return node;
   }
 
@@ -80,7 +80,7 @@ export class RTree extends Tree{
     currentNode.add_data(member);
 
 
-    this.assertNode(currentNode)
+    // this.assertNode(currentNode)
     
     if (this.checkNodeSplit(currentNode)) {
       return this.splitNode(currentNode, member)
@@ -212,7 +212,7 @@ export class RTree extends Tree{
     parent = node;
     if (node.has_parent_node()){
       parent = node.get_parent_node()
-      this.assertNode(parent)
+      // this.assertNode(parent)
       
     }
     let node1value = this.createBoundingBox(node1items.map(e=>this.getBBox(e.get_representation())))
@@ -221,7 +221,7 @@ export class RTree extends Tree{
     splitNode2 = new Node(node2value, parent, this)
 
 
-    this.assertNode(node)
+    // this.assertNode(node)
 
     if (! (this.isContained(node1value, parent.identifier.value) &&  this.isContained(node2value, parent.identifier.value))){
       throw new Error("Child node not contained on split")
@@ -250,7 +250,7 @@ export class RTree extends Tree{
     }
 
     
-    this.assertNode(parent)
+    // this.assertNode(parent)
 
     if (parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation).length >= this.max_fragment_size) {
       this.splitNode(parent, null);
@@ -388,7 +388,7 @@ export class RTree extends Tree{
     }
 
     
-    this.assertNode(parent)
+    // this.assertNode(parent)
 
     parent.fix_total_member_count()
     let parentChildren = parent.get_children_identifiers_with_relation(ChildRelation.GeospatiallyContainsRelation)

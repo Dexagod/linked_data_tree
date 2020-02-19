@@ -27,7 +27,7 @@ let treeStringDataLocation = "hydra_streets/"
 
 
 
-describe('Prefix Tree tests', () => {
+describe('Hydra tests', () => {
 
 
   let readLines = fs.readFileSync(sourceFile).toString().split("\n")

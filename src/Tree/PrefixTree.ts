@@ -2,15 +2,18 @@ import { Tree } from './Tree';
 import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 import { ChildRelation } from '../Relations/ChildRelation';
+import { Relation } from '../Relation';
 
-// const normalizeString = require('stringnormalizer');
 
 export class PrefixTree extends Tree {
   /**
   * Adds the given data to the tree.
   * @param {Member} member 
   */
+
+  count = 0
   addData(representation : any, member : Member) : Node | null{
+
     if(this.node_count === 0) {
       this.createFirstNode("", null)
     }
@@ -20,21 +23,25 @@ export class PrefixTree extends Tree {
     return this.recursiveAddition(this.get_root_node(), member, representation)
   }
 
-  private recursiveAddition(currentNode : Node, member : Member, searchString : string, childValue : string = "") : Node {
+  private recursiveAddition(currentNode : Node, member : Member, searchString : string, childValue : string = "", level: number = 0) : Node {
     if (currentNode.has_child_relations()){
-      let childRelationIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)
-      if (childRelationIdentifiers !== null) {
-        for (let childIdentifier of childRelationIdentifiers.sort(function(a, b) { return b.value.length - a.value.length })){ //START SEARCHING WITH LONGEST MATCH
-          if (searchString.startsWith(childIdentifier.value)){
-            return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value)
+      if (searchString === childValue){
+        for (let childIdentifier of currentNode.get_children_identifiers_with_relation(ChildRelation.EqualThanRelation)){
+          if (searchString === childIdentifier.value){
+            return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value, level+1)
           }
+        }
+      }
+      for (let childIdentifier of currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)){
+        if (searchString.startsWith(childIdentifier.value)){
+          return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value, level+1)
         }
       }
     } 
     if (member !== null) {
       currentNode.add_data(member)
       if (this.checkNodeSplit(currentNode)){
-        return this.splitNode(currentNode, member.get_representation(), childValue)
+        return this.splitNode(currentNode, childValue, level)
       } else {
         return currentNode;
       }
@@ -42,122 +49,68 @@ export class PrefixTree extends Tree {
     return currentNode;
   }
 
-  private splitNode(node : Node, addedString : string, childValue : string) : Node {
-
-    let members = node.get_members();
-    let newmembers = []
-    for (let member of members){
-      let found = false;
-      for (let relation of node.getRelations()){
-        if (member.get_representation().startsWith(relation.value)){
-          this.recursiveAddition(this.get_cache().get_node(relation.identifier), member, member.get_representation(), relation.value)
-          found = true;
-        }
-      }
-      if (! found){
-        newmembers.push(member)
-      }
-      node.set_members(newmembers)
-      node.fix_total_member_count()
-    }
-
-    if (this.checkNodeSplit(node)  === false){
-      return node;
-    }
-
-    let newNodeMembers = new Array<any>()
-    let potentialSplitMembers = new Array();
-    for (let member of node.get_members()){
-      if (member.representation === childValue){
-        newNodeMembers.push(member)
-      } else {
-        potentialSplitMembers.push(member)
-      }
-    }
-
-    let childNode = null;
-    if (potentialSplitMembers.length < Math.ceil(this.max_fragment_size / 100) ||  potentialSplitMembers.length < 5){
+  private splitNode(node : Node, childValue : string, level: number) : Node {
+  
+    if (level > childValue.length){
+      // splitting a node behind an equalsrelation
+      let childNode = new Node(childValue, null, this)
       let nodeMembers = node.get_members()
-      let memberString = nodeMembers[0].representation
-      childNode = new Node(memberString, node, this)
-
-      let parentNodeList = potentialSplitMembers
-      let childNodeList = []
-
-      for (let member of newNodeMembers){
-        if (parentNodeList.length < Math.floor(this.max_fragment_size / 2)){
-          parentNodeList.push(member)
-        } else {
-          childNodeList.push(member)
-        }
-      }
-
-      node.set_members(parentNodeList)
-      childNode.set_members(childNodeList)
-      node.add_child(ChildRelation.PrefixRelation, childNode, memberString)
-      childNode.fix_total_member_count()
-      node.fix_total_member_count()  
+      let splitMember = nodeMembers.pop()
+      node.members = nodeMembers
+      if (splitMember === undefined){ throw new Error("Undefined split member")}
+      childNode.add_data(splitMember)
+      node.add_child_no_propagation(ChildRelation.EqualThanRelation, childNode, childValue)
+      
       return childNode;
     }
 
+    let characterMap = new Map()
 
-    let firstLettersArray = potentialSplitMembers.map(e => e.get_representation().substring(childValue.length, childValue.length + 1))
-    const frequencyMap : Map<any, any> = firstLettersArray.reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map())
-
-    // console.log(currentNodePathString, currentNodePathString.length, frequencyMap, nodeMembers.map(e => [e.get_representation().substring(currentNodePathString.length, currentNodePathString.length + 1), this.getNormalizedString(e.get_representation()), e.get_representation()]))
-    let maxFreq = 0
-    let maxChar = null
-    for (let item of Array.from(frequencyMap.entries())) {
-      if (item[1] > maxFreq){
-        maxChar = item[0]
-        maxFreq = item[1]
-      }
-    }
-    if (maxChar === null) { throw new Error("Something went wrong internally while building the tree. Could not split an internal node on overflow.")}
-
-    let splitMembers = new Array<any>()
-
-    for (let member of potentialSplitMembers){
-      if (member.representation.substring(childValue.length, childValue.length + 1) === maxChar){
-        splitMembers.push(member)
+    for (let member of node.get_members()){
+      let nextChar = member.get_representation().substring(level, level+1)
+      let charArray = characterMap.get(nextChar)
+      if (charArray === undefined){ 
+        characterMap.set(nextChar, [member])
       } else {
-        newNodeMembers.push(member)
+        charArray.push(member)
       }
     }
 
+    let maxCharacter = "";
+    let maxcharacterListSize = 0;
 
-    
-    if (splitMembers.length !== 0){
-      let newNodeValue = childValue + maxChar
-      childNode = new Node(newNodeValue, node, this)
-      node.set_members(newNodeMembers)
-      childNode.set_members(splitMembers)
-      node.add_child(ChildRelation.PrefixRelation, childNode, newNodeValue)
-      childNode.fix_total_member_count()
-      node.fix_total_member_count()  
+    for (let entry of Array.from(characterMap.entries())){
+      if (entry[1].length > maxcharacterListSize){
+        maxcharacterListSize = entry[1].length
+        maxCharacter = entry[0]
+      }
     }
-    
-    if (this.checkNodeSplit(node)){
-      // THERE ARE MORE THAN fragmensize AMOUNT OF ITEMS WITH THE SAME NAME
-      let nodeMembers = node.get_members()
-      let memberString = nodeMembers[0].representation
-      childNode = new Node(memberString, node, this)
+    let maxCharMembersList = new Array()
+    let currentNodeMembersList = new Array()
 
-      let newMembers = nodeMembers.slice(0, Math.floor(nodeMembers.length / 2))
-      let splitMembers = nodeMembers.slice(Math.floor(nodeMembers.length / 2))
-
-      node.set_members(newMembers)
-      childNode.set_members(splitMembers)
-      node.add_child(ChildRelation.PrefixRelation, childNode, memberString)
-      childNode.fix_total_member_count()
-      node.fix_total_member_count()  
+    for (let entry of Array.from(characterMap.entries())){
+      if (entry[0] === maxCharacter){
+        maxCharMembersList = entry[1]
+      } else {
+        currentNodeMembersList = currentNodeMembersList.concat(entry[1])
+      }
     }
 
-    if (node.get_members().length > this.max_fragment_size){ throw new Error()}
-    
+    let newValue = childValue + maxCharacter
+    let relation = ChildRelation.PrefixRelation
+    if (maxCharacter === ""){
+      relation = ChildRelation.EqualThanRelation
+    }
 
-    if (childNode !== null && addedString.startsWith(maxChar)){
-      return childNode
+    let childNode = new Node(newValue, null, this)
+    for (let member of maxCharMembersList){
+      childNode.add_data(member)
+    }
+    node.set_members(currentNodeMembersList)
+    node.add_child_no_propagation(relation, childNode, newValue)
+
+    if (this.checkNodeSplit(childNode)){
+      this.splitNode(childNode, newValue, level+1)
     }
     return node;
   }
@@ -190,24 +143,36 @@ export class PrefixTree extends Tree {
     let resultingMembers :  Array<Member> = new Array();
     let resultingNodes :  Array<Node> = new Array();
     let childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation.PrefixRelation)
-    if (childrenIdentifiers !== null && childrenIdentifiers.length > 0) {
-      for (let childIdentifier of childrenIdentifiers){
-        if (searchString.startsWith(childIdentifier.value)){
+    let childrenIdentifiersEqual = currentNode.get_children_identifiers_with_relation(ChildRelation.EqualThanRelation)
 
-          let child = this.get_cache().get_node(childIdentifier)
-          let [resMems, resNodes] = this._search_data_recursive(child, searchString)
-          resultingMembers = resultingMembers.concat(resMems)
-          resultingNodes = resultingNodes.concat(resNodes)
+    for (let childIdentifier of childrenIdentifiers){
+      if (searchString.startsWith(childIdentifier.value)){
 
-        } else if (childIdentifier.value.startsWith(searchString)){
+        let child = this.get_cache().get_node(childIdentifier)
+        let [resMems, resNodes] = this._search_data_recursive(child, searchString)
+        resultingMembers = resultingMembers.concat(resMems)
+        resultingNodes = resultingNodes.concat(resNodes)
 
-          let child = this.get_cache().get_node(childIdentifier)
-          let [resMems, resNodes] = this._search_data_recursive(child, "")
-          resultingMembers = resultingMembers.concat(resMems)
-          resultingNodes = resultingNodes.concat(resNodes)
-        }
+      } else if (childIdentifier.value.startsWith(searchString)){
+
+        let child = this.get_cache().get_node(childIdentifier)
+        let [resMems, resNodes] = this._search_data_recursive(child, "")
+        resultingMembers = resultingMembers.concat(resMems)
+        resultingNodes = resultingNodes.concat(resNodes)
       }
-    } 
+    }
+
+    for (let childIdentifier of childrenIdentifiersEqual){
+      if (searchString === childIdentifier.value){
+        let child = this.get_cache().get_node(childIdentifier)
+        let [resMems, resNodes] = this._search_data_recursive(child, searchString)
+        resultingMembers = resultingMembers.concat(resMems)
+        resultingNodes = resultingNodes.concat(resNodes)
+      }
+    }
+
+
+
     resultingMembers = resultingMembers.concat(currentNode.get_members())
     resultingNodes.push(currentNode)
     return [resultingMembers, resultingNodes]

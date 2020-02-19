@@ -3,7 +3,6 @@ import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 import { ChildRelation } from '../Relations/ChildRelation';
 
-// const normalizeString = require('stringnormalizer');
 
 export class HydraPartialCollectionView extends Tree {
   /**

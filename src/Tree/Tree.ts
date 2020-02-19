@@ -2,7 +2,6 @@ import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 import { Cache } from "../Cache/Cache";
 import { Identifier } from '../Identifier';
-const jsonld = require("jsonld")
 
 export abstract class Tree {
 

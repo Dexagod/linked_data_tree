@@ -1,12 +1,7 @@
 import { expect } from 'chai';
 import { Node } from "../src/Node/Node"
 import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
-import { Identifier } from '../src/Identifier';
 import { RTreeManager } from '../src/treemanager/RTreeManager';
-import * as terraformer_parser from 'terraformer-wkt-parser';
-const ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
-const N3 = require('n3');
-
 
 import fs = require("fs")
 
@@ -18,11 +13,6 @@ let maxCachedFragments = 10000
 let RTreeStringDataLocation = "rtree_streets/"
 let RTreeStringLocation = "rtree_collections/"
 let RTreeStringFile = "rtree_streetnames" 
-
-
-var PRNG = require('prng')
-
-var prng = new PRNG(41); // use default seed
 
 
 
@@ -70,15 +60,8 @@ describe('RTree tests', () => {
     // for (let line of readLines) {
     for (let index = 0; index < 2000; index++) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
-      // let long = prng.rand(2000000, 4000000);
-      // let lat = prng.rand(50000000, 53000000);
-      // long = long / 1000000
-      // lat = lat / 1000000
-
-      let long = prng.rand(0, 50);
-      let lat = prng.rand(0, 50);
-      // long = long / 1000000
-      // lat = lat / 1000000
+      let long = Math.random() * 50
+      let lat = Math.random() * 50
 
 
       let representation = "POINT (" + lat + " " + long  + ")"

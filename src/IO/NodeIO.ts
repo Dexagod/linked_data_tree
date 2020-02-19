@@ -7,7 +7,6 @@ import { Tree } from '../Tree/Tree';
 import { Relation } from '../Relation';
 
 import fs = require('fs');
-var jsonld = require('jsonld')
 
 var context = {
   "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",

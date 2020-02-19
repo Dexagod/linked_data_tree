@@ -12,9 +12,9 @@ import fs = require("fs")
 // const normalizeString = require('stringnormalizer');
 
 let sourceDirectory = "tests/testdata/"
-// let sourceFile = "tests/straatnamen20k.txt"
-let sourceFile = "tests/straatnamenSame.txt"
-let maxFragmentSize = 35
+let sourceFile = "tests/straatnamen20k.txt"
+// let sourceFile = "tests/straatnamenSame.txt"
+let maxFragmentSize = 15
 let maxCachedFragments = 10000
 
 
@@ -47,21 +47,7 @@ describe('Prefix Tree tests', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
   });
 
-  let count = 0
-  it('Adding a single item to tree', () => {
-    let long = 10//(Math.random() * 2) + 2;
-    let lat = 20//(Math.random() * 3) + 50;
-    let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-        @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-        <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
-    tree.addData("Teststraat", dataObject)
-
-    expect(tree.getTreeObject().node_count).to.equal(1);
-    // expect(tree.getTreeObject().get_root_node_identifier().value).to.equal("");
-
-  });
-
+  
   let identifier = 0
   let representations = new Array();
   it('adding street names to tree', () => {
@@ -150,6 +136,10 @@ function checkItems(currentNode : Node, depth: number){
       expect(relation.identifier).not.null
       expect(relation.type).not.null
       expect(relation.value).not.null
+    }
+    if (totalItems != currentNode.get_remainingItems()){
+      delete currentNode["fc"]
+      console.log("ERROR", JSON.stringify(currentNode,null,2))
     }
     expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
