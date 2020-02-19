@@ -10,7 +10,7 @@ import { Interval } from '../Interval';
 TODO:: FIX TOTAL COUNTS
 */
 
-export class BinaryBTree extends Tree {
+export class BTree extends Tree {
 
   /**
    * Adds the given data to the tree.

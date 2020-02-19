@@ -7,7 +7,6 @@ var Cache_1 = require("../Cache/Cache");
 var Identifier_1 = require("../Identifier");
 var Relation_1 = require("../Relation");
 var fs = require("fs");
-var jsonld = require('jsonld');
 var context = {
     "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
@@ -19,7 +18,8 @@ var context = {
     "members": "hydra:member",
     "children": "tree:relation",
     "geo": "http://www.w3.org/2003/01/geo/wgs84_pos#",
-    "shacl": "http://www.w3.org/ns/shacl#"
+    "shacl": "http://www.w3.org/ns/shacl#",
+    "ex": "http://example.com#"
 };
 var NodeIO = /** @class */ (function () {
     /**
@@ -27,10 +27,12 @@ var NodeIO = /** @class */ (function () {
      * @param {string} sourceDirectory - The source directory where all data of this tree is stored.
      * @param {string} dataFolder - The subfolder of the source directory where the fragments are stored.
      */
-    function NodeIO(sourceDirectory, dataFolder, shaclPath) {
+    function NodeIO(sourceDirectory, dataFolder, shaclPath, writeMetadata) {
+        if (writeMetadata === void 0) { writeMetadata = true; }
         this.sourceDirectory = sourceDirectory;
         this.dataFolder = dataFolder;
         this.shaclPath = shaclPath;
+        this.writeMetadata = writeMetadata;
     }
     NodeIO.prototype.write_node_batch = function (nodeArray) {
         for (var index = 0; index < nodeArray.length; index++) {
@@ -69,7 +71,9 @@ var NodeIO = /** @class */ (function () {
         var _a = this.encode_node(node), encodedNode = _a[0], encodedMembers = _a[1], encodedMemberMetadata = _a[2];
         var wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()); // TODO:: fix for correct amount of total items?
         var treeMetadata = [tree.max_fragment_size, tree.node_count, tree.options];
-        wrapper["treeMetadata"] = treeMetadata;
+        if (this.writeMetadata) {
+            wrapper["treeMetadata"] = treeMetadata;
+        }
         var JSONSTRING = JSON.stringify(wrapper, function (key, value) {
             return (key == 'fc') ? undefined : value;
         });
@@ -93,21 +97,32 @@ var NodeIO = /** @class */ (function () {
         tree["max_fragment_size"] = max_fragment_size;
         tree["node_count"] = node_count;
         tree["options"] = options;
-        tree["options"] = options;
         Object.setPrototypeOf(tree, prototypeObject.prototype);
         return tree;
     };
     NodeIO.prototype.encode_wrapper = function (encodedNode, encodedMembers, encodedMembersMetadata, totalItems) {
         if (totalItems === void 0) { totalItems = 0; }
-        return {
-            "@context": context,
-            "@id": this.getCollectionId(),
-            "@type": "hydra:Collection",
-            "tree:remainingItems": totalItems,
-            "hydra:view": encodedNode,
-            "hydra:member": encodedMembers,
-            "memberMetadata": encodedMembersMetadata,
-        };
+        if (this.writeMetadata) {
+            return {
+                "@context": context,
+                "@id": this.getCollectionId(),
+                "@type": "hydra:Collection",
+                "tree:remainingItems": totalItems,
+                "hydra:view": encodedNode,
+                "hydra:member": encodedMembers,
+                "memberMetadata": encodedMembersMetadata,
+            };
+        }
+        else {
+            return {
+                "@context": context,
+                "@id": this.getCollectionId(),
+                "@type": "hydra:Collection",
+                "tree:remainingItems": totalItems,
+                "hydra:view": encodedNode,
+                "hydra:member": encodedMembers
+            };
+        }
     };
     NodeIO.prototype.decode_wrapper = function (wrapper) {
         var node = wrapper["hydra:view"];
@@ -199,6 +214,8 @@ var NodeIO = /** @class */ (function () {
         if (relation.path === null) {
             relation.path = this.shaclPath;
         }
+        if (relation.identifier.nodeId === "/rtree_streets/1/node76.jsonld") {
+        }
         return {
             "@type": this.relationToString(relation.type),
             "tree:node": { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
@@ -218,7 +235,13 @@ var NodeIO = /** @class */ (function () {
         return this.getRootNodeIdentifier() + "#Collection";
     };
     NodeIO.prototype.getNodeLocation = function (nodeId) {
-        return this.sourceDirectory + nodeId;
+        var location = this.sourceDirectory + nodeId;
+        var nodelocation = location.split("/");
+        var nodeDirectory = nodelocation.slice(0, nodelocation.length - 1).join("/");
+        if (!fs.existsSync(nodeDirectory)) {
+            fs.mkdirSync(nodeDirectory, { recursive: true });
+        }
+        return location;
         // return this.sourceDirectory + this.dataFolder + "node" + nodeId.toString() + ".jsonld"
         // return this.dataFolder + "node" + nodeId.toString() + ".jsonld"
     };

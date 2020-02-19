@@ -12,6 +12,17 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -24,6 +35,7 @@ var Tree_1 = require("./Tree");
 var Node_1 = require("../Node/Node");
 var ChildRelation_1 = require("../Relations/ChildRelation");
 var terraformer = __importStar(require("terraformer"));
+// import * as terraformer from 'terraformer'
 var Identifier_1 = require("../Identifier");
 var RTree = /** @class */ (function (_super) {
     __extends(RTree, _super);
@@ -31,31 +43,58 @@ var RTree = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     RTree.prototype.addData = function (representation, member) {
+        var result = null;
         if (this.node_count === 0) {
-            return this.createFirstNode(representation, member);
+            result = this.createFirstNode(representation, member);
+            var rootNode = this.get_root_node();
+            rootNode.identifier.value = this.createBoundingBox([rootNode.identifier.value.bbox(), member.get_representation().bbox()]);
         }
-        return this.recursiveAddition(this.get_root_node(), member);
+        else {
+            var rootNode = this.get_root_node();
+            if (!this.isContained(member.get_representation(), rootNode.identifier.value)) {
+                rootNode.identifier.value = this.createBoundingBox([rootNode.identifier.value.bbox(), member.get_representation().bbox()]);
+            }
+            result = this.recursiveAddition(this.get_root_node(), member);
+            // this.checkTree()
+        }
+        return result;
     };
     RTree.prototype.recursiveAddition = function (currentNode, member) {
+        var node = null;
         if (currentNode.has_child_relations()) {
             var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
             if (childrenIdentifiers !== null) { // Node has childRelations of type GeospaciallyContainsRelation
                 var containingChild = this.findContainingChild(childrenIdentifiers, member.get_representation());
                 // Geen child node die de nieuwe data containt
                 if (containingChild !== null) {
-                    return this.recursiveAddition(containingChild, member);
-                }
-                var foundNode = this.findClosestBoundingBoxIndex(currentNode, member.get_representation());
-                if (foundNode.get_node_id() === currentNode.get_node_id()) {
-                    return this.addMemberToNode(currentNode, member);
+                    // Make sure that this node contains new object
+                    //TEST
+                    if (!this.isContained(member.get_representation(), currentNode.identifier.value)) {
+                        throw new Error("Uncontained member in tree construction");
+                    }
+                    node = this.recursiveAddition(containingChild, member);
                 }
                 else {
-                    return this.recursiveAddition(foundNode, member);
+                    var foundNode = this.findClosestBoundingBoxIndex(currentNode, member.get_representation());
+                    if (foundNode.get_node_id() === currentNode.get_node_id()) {
+                        node = this.addMemberToNode(currentNode, member);
+                    }
+                    else {
+                        //TEST
+                        if (!this.isContained(member.get_representation(), currentNode.identifier.value)) {
+                            throw new Error("Uncontained member in tree construction");
+                        }
+                        node = this.recursiveAddition(foundNode, member);
+                    }
                 }
             }
         }
+        if (node === null) {
+            node = this.addMemberToNode(currentNode, member);
+        }
         // Node is a leaf node (does not have any children of type GeospaciallyContainsRelation)
-        return this.addMemberToNode(currentNode, member);
+        // this.assertNode(currentNode)
+        return node;
     };
     RTree.prototype.addMemberToNode = function (currentNode, member) {
         if (!this.isContained(member.get_representation(), currentNode.get_identifier().value)) {
@@ -64,9 +103,15 @@ var RTree = /** @class */ (function (_super) {
             if (currentNodeBBox === undefined || dataBBox === undefined) {
                 throw new Error("bbox was undefined");
             }
-            currentNode.identifier.value = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
+            var oldIdentifier = __assign({}, currentNode.identifier);
+            var newValue = this.bboxToGeoJSON(this.expandBoundingBox(currentNodeBBox, dataBBox));
+            currentNode.identifier.value = newValue;
+            if (currentNode.has_parent_node()) {
+                currentNode.get_parent_node().update_child(oldIdentifier, currentNode.identifier, currentNode.identifier.value);
+            }
         }
         currentNode.add_data(member);
+        // this.assertNode(currentNode)
         if (this.checkNodeSplit(currentNode)) {
             return this.splitNode(currentNode, member);
         }
@@ -93,33 +138,23 @@ var RTree = /** @class */ (function (_super) {
         return returnNodes;
     };
     RTree.prototype._search_data_recursive = function (currentNode, area) {
-        var _this = this;
         var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
-        var resultingMembers = new Array();
+        var resultingMembers = currentNode.members;
         var resultingNodes = new Array();
         if (childrenIdentifiers !== null) {
             var containingChildren = this.findContainingOrOverlappingChildren(childrenIdentifiers, area);
-            if (containingChildren.length === 0) {
-                resultingNodes.concat(currentNode);
-                return [[], resultingNodes];
+            for (var _i = 0, containingChildren_1 = containingChildren; _i < containingChildren_1.length; _i++) {
+                var child = containingChildren_1[_i];
+                var _a = this._search_data_recursive(child, area), resMems = _a[0], resNodes = _a[1];
+                resultingMembers = resultingMembers.concat(resMems);
+                resultingNodes = resultingNodes.concat(resNodes);
             }
-            else {
-                containingChildren.forEach(function (child) {
-                    var _a = _this._search_data_recursive(child, area), resMems = _a[0], resNodes = _a[1];
-                    resultingMembers = resultingMembers.concat(resMems);
-                    resultingNodes = resultingNodes.concat(resNodes);
-                });
-            }
+            ;
         }
-        currentNode.members.forEach(function (tdo) {
-            if (_this.isContained(tdo.get_representation(), area)) {
-                resultingMembers.push(tdo);
-            }
-        });
         resultingNodes.push(currentNode);
         return [resultingMembers, resultingNodes];
     };
-    RTree.prototype.findClosestBoundingBoxIndex = function (currentNode, dataWKTstring) {
+    RTree.prototype.findClosestBoundingBoxIndex = function (currentNode, dataGeoObject) {
         var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
         if (childrenIdentifiers === null) {
             throw new Error("impossible");
@@ -128,7 +163,7 @@ var RTree = /** @class */ (function (_super) {
         var smallestBoundingBoxIndex = 0;
         var smallestBoundingBox = null;
         var smallestSizeDifference = Infinity;
-        var dataBoundingBox = dataWKTstring.bbox();
+        var dataBoundingBox = dataGeoObject.bbox();
         if (dataBoundingBox === undefined) {
             throw new Error("undefined bounding box for the given data");
         }
@@ -138,27 +173,31 @@ var RTree = /** @class */ (function (_super) {
             if (childBoundingBox === undefined) {
                 throw new Error("undefined bounding box for the given child node value");
             }
-            var expandedBoundingBox_1 = this.expandBoundingBox(dataBoundingBox, childBoundingBox);
-            var expandedBboxSize = this.getBBoxSize(expandedBoundingBox_1);
+            var expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, childBoundingBox);
+            var expandedBboxSize = this.getBBoxSize(expandedBoundingBox);
             var sizeDifference = expandedBboxSize - this.getBBoxSize(childBoundingBox);
             if (sizeDifference < smallestSizeDifference) {
-                smallestBoundingBox = expandedBoundingBox_1;
+                smallestBoundingBox = expandedBoundingBox;
                 smallestSizeDifference = sizeDifference;
                 smallestBoundingBoxIndex = i;
             }
         }
-        var currentNodeBBox = currentNode.get_identifier().value.bbox();
-        var expandedBoundingBox = this.expandBoundingBox(dataBoundingBox, currentNodeBBox);
         if (smallestBoundingBox === null) {
             throw new Error("couldnt split node");
         }
         else {
+            /**
+             * Update the child node value with least expanding bounding box on addition of new member, because member is going to be added to that node
+            */
             var oldIdentifier = childrenIdentifiers[smallestBoundingBoxIndex];
             var newValue = this.bboxToGeoJSON(smallestBoundingBox);
             var newIdentifier = new Identifier_1.Identifier(oldIdentifier.nodeId, newValue);
-            currentNode.update_child(oldIdentifier, newIdentifier);
+            currentNode.update_child(oldIdentifier, newIdentifier, newIdentifier.value);
             var node = this.get_cache().get_node(oldIdentifier);
             node.identifier.value = newValue;
+            if (!this.isContained(dataGeoObject, newValue)) {
+                throw new Error("NOT CONTAINED ON FINDCLOSESTCHILD");
+            }
             return node;
         }
     };
@@ -185,16 +224,22 @@ var RTree = /** @class */ (function (_super) {
         }
         var items = node.get_members();
         items.sort(function (a, b) { return (_this.getBBox(a.get_representation())[splitAxis] > _this.getBBox(b.get_representation())[splitAxis]) ? 1 : -1; });
-        var node2items = items.splice(Math.floor(items.length / 2), items.length);
+        var node1items = items.slice(0, Math.floor(items.length / 2));
+        var node2items = items.slice(Math.floor(items.length / 2), items.length);
         parent = node;
         if (node.has_parent_node()) {
             parent = node.get_parent_node();
+            // this.assertNode(parent)
         }
-        var node1value = this.createBoundingBox(items.map(function (e) { return _this.getBBox(e.get_representation()); }));
+        var node1value = this.createBoundingBox(node1items.map(function (e) { return _this.getBBox(e.get_representation()); }));
         var node2value = this.createBoundingBox(node2items.map(function (e) { return _this.getBBox(e.get_representation()); }));
         splitNode1 = new Node_1.Node(node1value, parent, this);
         splitNode2 = new Node_1.Node(node2value, parent, this);
-        splitNode1.set_members(items);
+        // this.assertNode(node)
+        if (!(this.isContained(node1value, parent.identifier.value) && this.isContained(node2value, parent.identifier.value))) {
+            throw new Error("Child node not contained on split");
+        }
+        splitNode1.set_members(node1items);
         splitNode2.set_members(node2items);
         splitNode1.fix_total_member_count();
         splitNode2.fix_total_member_count();
@@ -214,6 +259,7 @@ var RTree = /** @class */ (function (_super) {
             this.set_root_node_identifier(node.get_identifier());
             parent = node;
         }
+        // this.assertNode(parent)
         if (parent.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation).length >= this.max_fragment_size) {
             this.splitNode(parent, null);
         }
@@ -302,6 +348,30 @@ var RTree = /** @class */ (function (_super) {
         }
         splitNode1.fix_total_member_count();
         splitNode2.fix_total_member_count();
+        for (var _g = 0, node1members_2 = node1members; _g < node1members_2.length; _g++) {
+            var member = node1members_2[_g];
+            if (!this.isContained(member.representation, node1value)) {
+                throw new Error("LEAF SPLIT ERROR 1");
+            }
+        }
+        for (var _h = 0, node2members_2 = node2members; _h < node2members_2.length; _h++) {
+            var member = node2members_2[_h];
+            if (!this.isContained(member.representation, node2value)) {
+                throw new Error("LEAF SPLIT ERROR 2");
+            }
+        }
+        for (var _j = 0, node1childrenIdentifiers_2 = node1childrenIdentifiers; _j < node1childrenIdentifiers_2.length; _j++) {
+            var childIdentifier = node1childrenIdentifiers_2[_j];
+            if (!this.isContained(childIdentifier.value, node1value)) {
+                throw new Error("LEAF SPLIT ERROR 3");
+            }
+        }
+        for (var _k = 0, node2childrenIdentifiers_2 = node2childrenIdentifiers; _k < node2childrenIdentifiers_2.length; _k++) {
+            var childIdentifier = node2childrenIdentifiers_2[_k];
+            if (!this.isContained(childIdentifier.value, node2value)) {
+                throw new Error("LEAF SPLIT ERROR 4");
+            }
+        }
         if (node.has_parent_node()) {
             var relationsList = [ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, ChildRelation_1.ChildRelation.GeospatiallyContainsRelation];
             var newChildrenList = [splitNode1, splitNode2];
@@ -314,6 +384,7 @@ var RTree = /** @class */ (function (_super) {
             node.add_child(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation, splitNode2, node2value);
             this.set_root_node_identifier(node.get_identifier());
         }
+        // this.assertNode(parent)
         parent.fix_total_member_count();
         var parentChildren = parent.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.GeospatiallyContainsRelation);
         if (parentChildren != null && parentChildren.length >= this.max_fragment_size) {
@@ -361,17 +432,39 @@ var RTree = /** @class */ (function (_super) {
         }
         return children;
     };
-    RTree.prototype.isContained = function (dataGeoObject, childGeoObject) {
-        if (childGeoObject instanceof terraformer.Point) {
-            return false;
-        } // Point cannot contain other polygon or point
-        var childWKTPrimitive = new terraformer.Primitive(childGeoObject);
+    RTree.prototype.isContained = function (contined_object, container) {
+        // if (childGeoObject instanceof terraformer.Point)  { return false } // Point cannot contain other polygon or point
         try {
-            return (childWKTPrimitive.contains(dataGeoObject));
+            if (!container.contains(contined_object)) {
+                var bbox = container.bbox();
+                if (contined_object instanceof terraformer.Point) {
+                    return this.bboxContainsPoint(bbox, contined_object.coordinates);
+                }
+                else if (contined_object instanceof terraformer.Polygon) {
+                    for (var _i = 0, _a = contined_object.coordinates[0]; _i < _a.length; _i++) {
+                        var coordinate = _a[_i];
+                        if (!this.bboxContainsPoint(bbox, coordinate)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
+            else {
+                return true;
+            }
         }
         catch (err) {
             return false;
         }
+    };
+    RTree.prototype.bboxContainsPoint = function (bbox, pointCoordinates) {
+        if ((bbox[0] <= pointCoordinates[0] && pointCoordinates[0] <= bbox[2]) &&
+            (bbox[1] <= pointCoordinates[1] && pointCoordinates[1] <= bbox[3])) {
+            return true;
+        }
+        return false;
     };
     RTree.prototype.isOverlapping = function (dataGeoObject, childGeoObject) {
         if (childGeoObject instanceof terraformer.Point || dataGeoObject instanceof terraformer.Point) {
@@ -464,6 +557,49 @@ var RTree = /** @class */ (function (_super) {
             }
         }
         return maxDItemIndices;
+    };
+    RTree.prototype.checkNode = function (node) {
+        if (node.identifier.nodeId === "/rtree_streets/1/node76.jsonld" || node.identifier.nodeId === "/rtree_streets/1/node99.jsonld") {
+        }
+        for (var _i = 0, _a = node.get_members(); _i < _a.length; _i++) {
+            var member = _a[_i];
+            if (!this.isContained(member.get_representation(), node.identifier.value)) {
+                return false;
+            }
+        }
+        for (var _b = 0, _c = node.getRelations(); _b < _c.length; _b++) {
+            var relation = _c[_b];
+            if (!this.isContained(relation.value, node.identifier.value)) {
+                return false;
+            }
+        }
+        if (node.has_parent_node()) {
+            for (var _d = 0, _e = node.get_parent_node().getRelations(); _d < _e.length; _d++) {
+                var relation = _e[_d];
+                if (relation.identifier.nodeId === node.identifier.nodeId) {
+                    if (relation.identifier.value !== node.identifier.value) {
+                        throw new Error("not the same values");
+                    }
+                }
+            }
+        }
+        return true;
+    };
+    RTree.prototype.checkNodeRecusive = function (node) {
+        this.assertNode(node);
+        for (var _i = 0, _a = node.getRelations(); _i < _a.length; _i++) {
+            var relation = _a[_i];
+            this.checkNodeRecusive(this.cache.get_node(relation.identifier));
+        }
+    };
+    RTree.prototype.checkTree = function () {
+        var rootNode = this.get_root_node();
+        this.checkNodeRecusive(rootNode);
+    };
+    RTree.prototype.assertNode = function (node) {
+        if (!this.checkNode(node)) {
+            throw new Error("Error asserting Node");
+        }
     };
     return RTree;
 }(Tree_1.Tree));

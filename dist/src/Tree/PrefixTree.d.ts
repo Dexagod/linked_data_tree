@@ -6,6 +6,7 @@ export declare class PrefixTree extends Tree {
     * Adds the given data to the tree.
     * @param {Member} member
     */
+    count: number;
     addData(representation: any, member: Member): Node | null;
     private recursiveAddition;
     private splitNode;

@@ -12,7 +12,9 @@ var TreeManager = /** @class */ (function () {
      * @param {*} maxCachedFragments - maximal cachable fragments at once
      */
     TreeManager.prototype.readTree = function (sourceDirectory, dataFolder, nodeShaclPath, maxCachedFragments, maxFragmentSize) {
-        var nodeIO = this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath);
+        if (maxCachedFragments === void 0) { maxCachedFragments = Infinity; }
+        if (maxFragmentSize === void 0) { maxFragmentSize = 100; }
+        var nodeIO = this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath, true);
         var tree = nodeIO.readTree(this.getTreeObjectPrototype());
         return this.createTreeRepresentation(tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO);
     };
@@ -22,14 +24,19 @@ var TreeManager = /** @class */ (function () {
      * @param {string} dataFolder - folder containing the fragment files in the sourceDirectory
      * @param {number} maxCachedFragments - the maximal amount of elements in the cache
      */
-    TreeManager.prototype.createTree = function (sourceDirectory, dataFolder, nodeShaclPath, maxCachedFragments, maxFragmentSize) {
-        return this.createTreeRepresentation(null, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath));
+    TreeManager.prototype.createTree = function (sourceDirectory, dataFolder, nodeShaclPath, maxCachedFragments, maxFragmentSize, writeMetadata) {
+        if (writeMetadata === void 0) { writeMetadata = true; }
+        return this.createTreeRepresentation(null, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath, writeMetadata));
     };
-    TreeManager.prototype.getNodeIO = function (sourceDirectory, dataFolder, nodePath) {
-        return this.getNodeIOObject(sourceDirectory, dataFolder, nodePath);
+    TreeManager.prototype.createTreeRepresentation = function (tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO) {
+        var treeRepresentationObjectPrototype = this.getTreeRepresentationObjectPrototype();
+        return new treeRepresentationObjectPrototype(tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO);
     };
-    TreeManager.prototype.getNodeIOObject = function (sourceDirectory, dataFolder, nodePath) {
-        return new NodeIO_1.NodeIO(sourceDirectory, dataFolder, nodePath);
+    TreeManager.prototype.getNodeIO = function (sourceDirectory, dataFolder, nodePath, writeMetadata) {
+        return this.getNodeIOObject(sourceDirectory, dataFolder, nodePath, writeMetadata);
+    };
+    TreeManager.prototype.getNodeIOObject = function (sourceDirectory, dataFolder, nodePath, writeMetadata) {
+        return new NodeIO_1.NodeIO(sourceDirectory, dataFolder, nodePath, writeMetadata);
     };
     return TreeManager;
 }());

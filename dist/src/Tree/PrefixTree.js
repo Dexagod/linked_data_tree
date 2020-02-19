@@ -16,16 +16,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Tree_1 = require("./Tree");
 var Node_1 = require("../Node/Node");
 var ChildRelation_1 = require("../Relations/ChildRelation");
-// const normalizeString = require('stringnormalizer');
 var PrefixTree = /** @class */ (function (_super) {
     __extends(PrefixTree, _super);
     function PrefixTree() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        /**
+        * Adds the given data to the tree.
+        * @param {Member} member
+        */
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.count = 0;
+        return _this;
     }
-    /**
-    * Adds the given data to the tree.
-    * @param {Member} member
-    */
     PrefixTree.prototype.addData = function (representation, member) {
         if (this.node_count === 0) {
             this.createFirstNode("", null);
@@ -35,23 +36,29 @@ var PrefixTree = /** @class */ (function (_super) {
         }
         return this.recursiveAddition(this.get_root_node(), member, representation);
     };
-    PrefixTree.prototype.recursiveAddition = function (currentNode, member, searchString, childValue) {
+    PrefixTree.prototype.recursiveAddition = function (currentNode, member, searchString, childValue, level) {
         if (childValue === void 0) { childValue = ""; }
+        if (level === void 0) { level = 0; }
         if (currentNode.has_child_relations()) {
-            var childRelationIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.PrefixRelation);
-            if (childRelationIdentifiers !== null) {
-                for (var _i = 0, _a = childRelationIdentifiers.sort(function (a, b) { return b.value.length - a.value.length; }); _i < _a.length; _i++) { //START SEARCHING WITH LONGEST MATCH
+            if (searchString === childValue) {
+                for (var _i = 0, _a = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.EqualThanRelation); _i < _a.length; _i++) {
                     var childIdentifier = _a[_i];
-                    if (searchString.startsWith(childIdentifier.value)) {
-                        return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value);
+                    if (searchString === childIdentifier.value) {
+                        return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value, level + 1);
                     }
+                }
+            }
+            for (var _b = 0, _c = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.PrefixRelation); _b < _c.length; _b++) {
+                var childIdentifier = _c[_b];
+                if (searchString.startsWith(childIdentifier.value)) {
+                    return this.recursiveAddition(this.get_cache().get_node(childIdentifier), member, searchString, childIdentifier.value, level + 1);
                 }
             }
         }
         if (member !== null) {
             currentNode.add_data(member);
             if (this.checkNodeSplit(currentNode)) {
-                return this.splitNode(currentNode, member.get_representation(), childValue);
+                return this.splitNode(currentNode, childValue, level);
             }
             else {
                 return currentNode;
@@ -59,93 +66,66 @@ var PrefixTree = /** @class */ (function (_super) {
         }
         return currentNode;
     };
-    PrefixTree.prototype.splitNode = function (node, addedString, childValue) {
-        var newNodeMembers = new Array();
-        var potentialSplitMembers = new Array();
+    PrefixTree.prototype.splitNode = function (node, childValue, level) {
+        if (level > childValue.length) {
+            // splitting a node behind an equalsrelation
+            var childNode_1 = new Node_1.Node(childValue, null, this);
+            var nodeMembers = node.get_members();
+            var splitMember = nodeMembers.pop();
+            node.members = nodeMembers;
+            if (splitMember === undefined) {
+                throw new Error("Undefined split member");
+            }
+            childNode_1.add_data(splitMember);
+            node.add_child_no_propagation(ChildRelation_1.ChildRelation.EqualThanRelation, childNode_1, childValue);
+            return childNode_1;
+        }
+        var characterMap = new Map();
         for (var _i = 0, _a = node.get_members(); _i < _a.length; _i++) {
             var member = _a[_i];
-            if (member.representation === childValue) {
-                newNodeMembers.push(member);
+            var nextChar = member.get_representation().substring(level, level + 1);
+            var charArray = characterMap.get(nextChar);
+            if (charArray === undefined) {
+                characterMap.set(nextChar, [member]);
             }
             else {
-                potentialSplitMembers.push(member);
+                charArray.push(member);
             }
         }
-        var childNode = null;
-        if (potentialSplitMembers.length < Math.ceil(this.max_fragment_size / 100) || potentialSplitMembers.length < 5) {
-            var nodeMembers = node.get_members();
-            var memberString = nodeMembers[0].representation;
-            childNode = new Node_1.Node(memberString, node, this);
-            var parentNodeList = potentialSplitMembers;
-            var childNodeList = [];
-            for (var _b = 0, newNodeMembers_1 = newNodeMembers; _b < newNodeMembers_1.length; _b++) {
-                var member = newNodeMembers_1[_b];
-                if (parentNodeList.length < Math.floor(this.max_fragment_size / 2)) {
-                    parentNodeList.push(member);
-                }
-                else {
-                    childNodeList.push(member);
-                }
-            }
-            node.set_members(parentNodeList);
-            childNode.set_members(childNodeList);
-            node.add_child(ChildRelation_1.ChildRelation.PrefixRelation, childNode, memberString);
-            childNode.fix_total_member_count();
-            node.fix_total_member_count();
-            return childNode;
-        }
-        var firstLettersArray = potentialSplitMembers.map(function (e) { return e.get_representation().substring(childValue.length, childValue.length + 1); });
-        var frequencyMap = firstLettersArray.reduce(function (acc, e) { return acc.set(e, (acc.get(e) || 0) + 1); }, new Map());
-        // console.log(currentNodePathString, currentNodePathString.length, frequencyMap, nodeMembers.map(e => [e.get_representation().substring(currentNodePathString.length, currentNodePathString.length + 1), this.getNormalizedString(e.get_representation()), e.get_representation()]))
-        var maxFreq = 0;
-        var maxChar = null;
-        for (var _c = 0, _d = Array.from(frequencyMap.entries()); _c < _d.length; _c++) {
-            var item = _d[_c];
-            if (item[1] > maxFreq) {
-                maxChar = item[0];
-                maxFreq = item[1];
+        var maxCharacter = "";
+        var maxcharacterListSize = 0;
+        for (var _b = 0, _c = Array.from(characterMap.entries()); _b < _c.length; _b++) {
+            var entry = _c[_b];
+            if (entry[1].length > maxcharacterListSize) {
+                maxcharacterListSize = entry[1].length;
+                maxCharacter = entry[0];
             }
         }
-        if (maxChar === null) {
-            throw new Error("Something went wrong internally while building the tree. Could not split an internal node on overflow.");
-        }
-        var splitMembers = new Array();
-        for (var _e = 0, potentialSplitMembers_1 = potentialSplitMembers; _e < potentialSplitMembers_1.length; _e++) {
-            var member = potentialSplitMembers_1[_e];
-            if (member.representation.substring(childValue.length, childValue.length + 1) === maxChar) {
-                splitMembers.push(member);
+        var maxCharMembersList = new Array();
+        var currentNodeMembersList = new Array();
+        for (var _d = 0, _e = Array.from(characterMap.entries()); _d < _e.length; _d++) {
+            var entry = _e[_d];
+            if (entry[0] === maxCharacter) {
+                maxCharMembersList = entry[1];
             }
             else {
-                newNodeMembers.push(member);
+                currentNodeMembersList = currentNodeMembersList.concat(entry[1]);
             }
         }
-        if (splitMembers.length !== 0) {
-            var newNodeValue = childValue + maxChar;
-            childNode = new Node_1.Node(newNodeValue, node, this);
-            node.set_members(newNodeMembers);
-            childNode.set_members(splitMembers);
-            node.add_child(ChildRelation_1.ChildRelation.PrefixRelation, childNode, newNodeValue);
-            childNode.fix_total_member_count();
-            node.fix_total_member_count();
+        var newValue = childValue + maxCharacter;
+        var relation = ChildRelation_1.ChildRelation.PrefixRelation;
+        if (maxCharacter === "") {
+            relation = ChildRelation_1.ChildRelation.EqualThanRelation;
         }
-        if (this.checkNodeSplit(node)) {
-            // THERE ARE MORE THAN fragmensize AMOUNT OF ITEMS WITH THE SAME NAME
-            var nodeMembers = node.get_members();
-            var memberString = nodeMembers[0].representation;
-            childNode = new Node_1.Node(memberString, node, this);
-            var newMembers = nodeMembers.slice(0, Math.floor(nodeMembers.length / 2));
-            var splitMembers_1 = nodeMembers.slice(Math.floor(nodeMembers.length / 2));
-            node.set_members(newMembers);
-            childNode.set_members(splitMembers_1);
-            node.add_child(ChildRelation_1.ChildRelation.PrefixRelation, childNode, memberString);
-            childNode.fix_total_member_count();
-            node.fix_total_member_count();
+        var childNode = new Node_1.Node(newValue, null, this);
+        for (var _f = 0, maxCharMembersList_1 = maxCharMembersList; _f < maxCharMembersList_1.length; _f++) {
+            var member = maxCharMembersList_1[_f];
+            childNode.add_data(member);
         }
-        if (node.get_members().length > this.max_fragment_size) {
-            throw new Error();
-        }
-        if (childNode !== null && addedString.startsWith(maxChar)) {
-            return childNode;
+        node.set_members(currentNodeMembersList);
+        node.add_child_no_propagation(relation, childNode, newValue);
+        if (this.checkNodeSplit(childNode)) {
+            this.splitNode(childNode, newValue, level + 1);
         }
         return node;
     };
@@ -176,21 +156,29 @@ var PrefixTree = /** @class */ (function (_super) {
         var resultingMembers = new Array();
         var resultingNodes = new Array();
         var childrenIdentifiers = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.PrefixRelation);
-        if (childrenIdentifiers !== null && childrenIdentifiers.length > 0) {
-            for (var _i = 0, childrenIdentifiers_1 = childrenIdentifiers; _i < childrenIdentifiers_1.length; _i++) {
-                var childIdentifier = childrenIdentifiers_1[_i];
-                if (searchString.startsWith(childIdentifier.value)) {
-                    var child = this.get_cache().get_node(childIdentifier);
-                    var _a = this._search_data_recursive(child, searchString), resMems = _a[0], resNodes = _a[1];
-                    resultingMembers = resultingMembers.concat(resMems);
-                    resultingNodes = resultingNodes.concat(resNodes);
-                }
-                else if (childIdentifier.value.startsWith(searchString)) {
-                    var child = this.get_cache().get_node(childIdentifier);
-                    var _b = this._search_data_recursive(child, ""), resMems = _b[0], resNodes = _b[1];
-                    resultingMembers = resultingMembers.concat(resMems);
-                    resultingNodes = resultingNodes.concat(resNodes);
-                }
+        var childrenIdentifiersEqual = currentNode.get_children_identifiers_with_relation(ChildRelation_1.ChildRelation.EqualThanRelation);
+        for (var _i = 0, childrenIdentifiers_1 = childrenIdentifiers; _i < childrenIdentifiers_1.length; _i++) {
+            var childIdentifier = childrenIdentifiers_1[_i];
+            if (searchString.startsWith(childIdentifier.value)) {
+                var child = this.get_cache().get_node(childIdentifier);
+                var _a = this._search_data_recursive(child, searchString), resMems = _a[0], resNodes = _a[1];
+                resultingMembers = resultingMembers.concat(resMems);
+                resultingNodes = resultingNodes.concat(resNodes);
+            }
+            else if (childIdentifier.value.startsWith(searchString)) {
+                var child = this.get_cache().get_node(childIdentifier);
+                var _b = this._search_data_recursive(child, ""), resMems = _b[0], resNodes = _b[1];
+                resultingMembers = resultingMembers.concat(resMems);
+                resultingNodes = resultingNodes.concat(resNodes);
+            }
+        }
+        for (var _c = 0, childrenIdentifiersEqual_1 = childrenIdentifiersEqual; _c < childrenIdentifiersEqual_1.length; _c++) {
+            var childIdentifier = childrenIdentifiersEqual_1[_c];
+            if (searchString === childIdentifier.value) {
+                var child = this.get_cache().get_node(childIdentifier);
+                var _d = this._search_data_recursive(child, searchString), resMems = _d[0], resNodes = _d[1];
+                resultingMembers = resultingMembers.concat(resMems);
+                resultingNodes = resultingNodes.concat(resNodes);
             }
         }
         resultingMembers = resultingMembers.concat(currentNode.get_members());

@@ -1,25 +1,15 @@
 import { expect } from 'chai';
-// if you used the '@types/mocha' method to install mocha type definitions, uncomment the following line
-// import 'mocha';
-
 import { Node } from "../src/Node/Node"
-import { Member } from "../src/DataObjects/Member"
 import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
-import { BinaryBTreeManager } from '../src/treemanager/BinaryBTreeManager';
-import { Identifier } from '../src/Identifier';
-const ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
-
+import { BTreeManager } from '../src/treemanager/BTreeManager';
 import fs = require("fs")
 import { Relation } from '../src/Relation';
 import { ChildRelation } from '../src/Relations/ChildRelation';
 let sourceDirectory = "tests/testdata/"
 let sourceFile = "tests/straatnamen20k.txt"
 let binaryTreeStringDataLocation = "binary_streets_strings/"
-let binaryTreeStringLocation = "binary_collections/"
-let binaryTreeStringFile = "binary_streetnames" 
-let maxFragmentSize = 50 // 100
+let maxFragmentSize = 100
 let maxCachedFragments = 10000
-// Read input file
 
 
 
@@ -30,7 +20,7 @@ describe('Binary Tree String tests', () => {
   let readLines = fs.readFileSync(sourceFile).toString().split("\n")
   let representations : any[] = []
 
-  var treeManager = new BinaryBTreeManager()
+  var treeManager = new BTreeManager()
   
   
   let tree = treeManager.createTree(sourceDirectory, 
@@ -43,18 +33,6 @@ describe('Binary Tree String tests', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
   });
 
-  let count = 0
-  it('Adding a single item to tree', () => {
-    // let long = 10//(Math.random() * 2) + 2;
-    // let lat = 20//(Math.random() * 3) + 50;
-    // let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-    //     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-    //     @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-    //     <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
-
-    // tree.addData("Teststraat", dataObject)
-    // expect(tree.getTreeObject().node_count).to.equal(1);
-  });
 
   let identifier = 0
     
@@ -62,16 +40,11 @@ describe('Binary Tree String tests', () => {
     for (let line of readLines) {
       line = line.trim()
       // Create new Triple object to add to the given tree, containing a representation and an object.
-      let long = (Math.random() * 2) + 2;
-      let lat = (Math.random() * 3) + 50;
-
       let dataObject = {"@id": identifier++}
 
       // Add the member to the tree.
-      let node = tree.addData(line, dataObject, 10)
-      if (node !== null && node !== undefined){
-        representations.push([line, dataObject])
-      }
+      tree.addData(line, dataObject)
+      representations.push([line, dataObject])
     }
   })
   

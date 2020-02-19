@@ -14,7 +14,7 @@ export declare abstract class TreeRepresentation {
      * @param {string} representation
      * @param {any} data
      */
-    addData(representation: any, data: any, dataRepresentation?: any): void;
+    addData(representation: any, data: any, triplesSize?: number, dataRepresentation?: any): Node | null;
     searchData(value: any): Member[] | null;
     searchNode(value: any): Node[];
     /**

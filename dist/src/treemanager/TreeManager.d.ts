@@ -10,16 +10,17 @@ export declare abstract class TreeManager {
      * @param {*} dataFolder - folder containing the fragment files in the sourceDirectory
      * @param {*} maxCachedFragments - maximal cachable fragments at once
      */
-    readTree(sourceDirectory: string, dataFolder: string, nodeShaclPath: any, maxCachedFragments: number, maxFragmentSize: number): TreeRepresentation;
+    readTree(sourceDirectory: string, dataFolder: string, nodeShaclPath: any, maxCachedFragments?: number, maxFragmentSize?: number): TreeRepresentation;
     /**
      * Creates a new tree object.
      * @param {string} sourceDirectory - base forlder of the tree data
      * @param {string} dataFolder - folder containing the fragment files in the sourceDirectory
      * @param {number} maxCachedFragments - the maximal amount of elements in the cache
      */
-    createTree(sourceDirectory: string, dataFolder: string, nodeShaclPath: any, maxCachedFragments: number, maxFragmentSize: number): TreeRepresentation;
-    abstract createTreeRepresentation(tree: Tree | null, sourceDirectory: string, dataFolder: string, maxCachedFragments: number, maxFragmentSize: number, nodeIO: NodeIO): TreeRepresentation;
+    createTree(sourceDirectory: string, dataFolder: string, nodeShaclPath: any, maxCachedFragments: number, maxFragmentSize: number, writeMetadata?: boolean): TreeRepresentation;
+    abstract getTreeRepresentationObjectPrototype(): any;
+    createTreeRepresentation(tree: Tree | null, sourceDirectory: string, dataFolder: string, maxCachedFragments: number, maxFragmentSize: number, nodeIO: NodeIO): TreeRepresentation;
     abstract getTreeObjectPrototype(): any;
     private getNodeIO;
-    protected getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath: any): NodeIO;
+    protected getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath: any, writeMetadata: boolean): NodeIO;
 }

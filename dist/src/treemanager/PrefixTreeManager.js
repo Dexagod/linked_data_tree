@@ -21,8 +21,8 @@ var PrefixTreeManager = /** @class */ (function (_super) {
     function PrefixTreeManager() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    PrefixTreeManager.prototype.createTreeRepresentation = function (tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO) {
-        return new PrefixTreeRepresenatation_1.PrefixTreeRepresentation(tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO);
+    PrefixTreeManager.prototype.getTreeRepresentationObjectPrototype = function () {
+        return PrefixTreeRepresenatation_1.PrefixTreeRepresentation;
     };
     PrefixTreeManager.prototype.getTreeObjectPrototype = function () {
         return PrefixTree_1.PrefixTree;

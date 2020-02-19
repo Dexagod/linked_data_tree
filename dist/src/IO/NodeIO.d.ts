@@ -9,12 +9,13 @@ export declare class NodeIO {
     sourceDirectory: string;
     dataFolder: string;
     shaclPath: any;
+    writeMetadata: boolean;
     /**
      * Initialize the fragment IO managing object.
      * @param {string} sourceDirectory - The source directory where all data of this tree is stored.
      * @param {string} dataFolder - The subfolder of the source directory where the fragments are stored.
      */
-    constructor(sourceDirectory: string, dataFolder: string, shaclPath: any);
+    constructor(sourceDirectory: string, dataFolder: string, shaclPath: any, writeMetadata?: boolean);
     write_node_batch(nodeArray: Array<Node>): void;
     delete_node(nodeId: string): void;
     write_node(node: Node): void;
@@ -34,6 +35,7 @@ export declare class NodeIO {
             "children": string;
             "geo": string;
             "shacl": string;
+            "ex": string;
         };
         "@id": string;
         "@type": string;
@@ -41,6 +43,27 @@ export declare class NodeIO {
         "hydra:view": any;
         "hydra:member": any;
         "memberMetadata": any;
+    } | {
+        "@context": {
+            "rdf": string;
+            "rdfs": string;
+            "foaf": string;
+            "hydra": string;
+            "tree": string;
+            "schema": string;
+            "value": string;
+            "members": string;
+            "children": string;
+            "geo": string;
+            "shacl": string;
+            "ex": string;
+        };
+        "@id": string;
+        "@type": string;
+        "tree:remainingItems": number;
+        "hydra:view": any;
+        "hydra:member": any;
+        "memberMetadata"?: undefined;
     };
     decode_wrapper(wrapper: any): any[];
     encode_node(node: Node): any;

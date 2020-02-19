@@ -20,7 +20,12 @@ export declare class RTree extends Tree {
     private findContainingChild;
     private findContainingOrOverlappingChildren;
     private isContained;
+    private bboxContainsPoint;
     private isOverlapping;
     private chooseAxis;
     private pickSeeds;
+    checkNode(node: Node): boolean;
+    checkNodeRecusive(node: Node): void;
+    checkTree(): void;
+    assertNode(node: Node): void;
 }

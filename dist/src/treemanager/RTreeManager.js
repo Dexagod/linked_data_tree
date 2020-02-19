@@ -30,8 +30,8 @@ var RTreeManager = /** @class */ (function (_super) {
     function RTreeManager() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    RTreeManager.prototype.createTreeRepresentation = function (tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO) {
-        return new RTreeRepresentation_1.RTreeRepresentation(tree, sourceDirectory, dataFolder, maxCachedFragments, maxFragmentSize, nodeIO);
+    RTreeManager.prototype.getTreeRepresentationObjectPrototype = function () {
+        return RTreeRepresentation_1.RTreeRepresentation;
     };
     RTreeManager.prototype.getTreeObjectPrototype = function () {
         return RTree_1.RTree;

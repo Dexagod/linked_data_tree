@@ -154,11 +154,15 @@ var Node = /** @class */ (function () {
     };
     // Updates the child node.
     // Used when child changes fragment, so the parent needs to update the child fragment id in its children.
-    Node.prototype.update_child = function (oldIdentifier, newIdentifier) {
+    Node.prototype.update_child = function (oldIdentifier, newIdentifier, value) {
+        if (value === void 0) { value = null; }
         for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
             var relation = _a[_i];
             if (relation.identifier.equals(oldIdentifier)) {
                 relation.identifier = newIdentifier;
+                if (value !== null) {
+                    relation.value = value;
+                }
             }
         }
     };

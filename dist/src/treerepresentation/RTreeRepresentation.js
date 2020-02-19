@@ -32,12 +32,15 @@ var RTreeRepresentation = /** @class */ (function (_super) {
     RTreeRepresentation.prototype.createNewTreeObject = function (maxFragmentSize, fc) {
         return new RTree_1.RTree(maxFragmentSize, fc);
     };
-    RTreeRepresentation.prototype.addData = function (representation, data, dataRepresentation) {
+    RTreeRepresentation.prototype.addData = function (representation, data, triplesSize, dataRepresentation) {
+        if (triplesSize === void 0) { triplesSize = 1; }
         if (dataRepresentation === void 0) { dataRepresentation = representation; }
         representation = terraformer_parser.parse(representation);
         dataRepresentation = terraformer_parser.parse(dataRepresentation);
-        var newmember = new Member_1.Member(dataRepresentation, data);
-        this.tree.addData(representation, newmember);
+        return this.tree.addData(representation, new Member_1.Member(dataRepresentation, data, triplesSize));
+    };
+    RTreeRepresentation.prototype.searchData = function (value) {
+        return this.tree.searchData(terraformer_parser.parse(value));
     };
     return RTreeRepresentation;
 }(TreeRepresentation_1.TreeRepresentation));

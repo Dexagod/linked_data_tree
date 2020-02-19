@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Node_1 = require("../Node/Node");
 var Identifier_1 = require("../Identifier");
-var jsonld = require("jsonld");
 var Tree = /** @class */ (function () {
     /**
      * Representation of a patricia tree.
@@ -27,6 +26,10 @@ var Tree = /** @class */ (function () {
      */
     Tree.prototype.provide_node_id = function () {
         var id = "/" + this.cache.dataFolder + "node" + this.node_count.toString() + ".jsonld";
+        if (this.node_count > 0) {
+            var nodefolder = (Math.ceil(this.node_count / 1000)).toString();
+            id = "/" + this.cache.dataFolder + nodefolder + "/node" + this.node_count.toString() + ".jsonld";
+        }
         this.node_count++;
         return id;
         // return this.node_count++;
@@ -82,6 +85,12 @@ var Tree = /** @class */ (function () {
     Tree.prototype.set_root_node_identifier = function (identifier) {
         this.root_node_identifier = identifier;
     };
+    // checkNodeSplit(node: Node) : boolean{
+    //     if (node.get_members().map(e=>e.size).reduce((a:number, b:number) => a+b, 0) > this.max_fragment_size) {
+    //         return true
+    //     }
+    //     return false;
+    // }
     Tree.prototype.checkNodeSplit = function (node) {
         if (node.get_members().length > this.max_fragment_size) {
             return true;

@@ -2,17 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var chai_1 = require("chai");
 var PrefixTreeManager_1 = require("../src/treemanager/PrefixTreeManager");
-var ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
 var fs = require("fs");
-// const normalizeString = require('stringnormalizer');
 var sourceDirectory = "tests/testdata/";
 var sourceFile = "tests/straatnamen20k.txt";
-var maxFragmentSize = 50;
+var maxFragmentSize = 100;
 var maxCachedFragments = 10000;
 var prefixTreeStringDataLocation = "prefix_streets/";
-var prefixTreeStringLocation = "prefix_collections/";
-var prefixTreeStringFile = "prefix_streetnames";
-// Read input file
 describe('Prefix Tree tests', function () {
     var readLines = fs.readFileSync(sourceFile).toString().split("\n");
     var treeManager = new PrefixTreeManager_1.PrefixTreeManager();
@@ -21,35 +16,15 @@ describe('Prefix Tree tests', function () {
     it('creating new Tree object', function () {
         chai_1.expect(tree.getTreeObject().node_count).to.equal(0);
     });
-    var count = 0;
-    it('Adding a single item to tree', function () {
-        var long = 10; //(Math.random() * 2) + 2;
-        var lat = 20; //(Math.random() * 3) + 50;
-        var dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-        @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-        <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .');
-        tree.addData("Teststraat", dataObject);
-        chai_1.expect(tree.getTreeObject().node_count).to.equal(1);
-        // expect(tree.getTreeObject().get_root_node_identifier().value).to.equal("");
-    });
-    var i = 0;
+    var identifier = 0;
+    var representations = new Array();
     it('adding street names to tree', function () {
         for (var _i = 0, readLines_1 = readLines; _i < readLines_1.length; _i++) {
             var line = readLines_1[_i];
             // Create new Triple object to add to the given tree, containing a representation and an object.
-            var long = (Math.random() * 2) + 2;
-            var lat = (Math.random() * 3) + 50;
-            var dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-          @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-          @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-          <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "' + line + '"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .');
-            // Add the member to the tree.
-            // console.log("adding data", i++)
-            var node = tree.addData(line, dataObject, line);
-            if (node === undefined || node === null) {
-                console.error("NULL NODE", line);
-            }
+            var dataObject = { "@id": identifier++ };
+            tree.addData(line, dataObject);
+            representations.push([line, dataObject]);
         }
     });
     it('writing tree object', function () {
@@ -62,16 +37,31 @@ describe('Prefix Tree tests', function () {
         if (newtree === null) {
             throw new Error("reading the tree items resulted in a null tree object.");
         }
-        for (var _i = 0, readLines_2 = readLines; _i < readLines_2.length; _i++) {
-            var line = readLines_2[_i];
-            var representations = newtree.searchData(line);
+        for (var _i = 0, representations_1 = representations; _i < representations_1.length; _i++) {
+            var entry = representations_1[_i];
+            var identifier_1 = entry[1];
+            var line = entry[0];
+            var representations_2 = newtree.searchData(line);
             chai_1.expect(newtree.searchNode(line).length).gte(1);
-            if (representations === null) {
+            if (representations_2 === null) {
                 console.error("null prepresentations");
                 chai_1.expect(false);
             }
             else {
-                chai_1.expect(representations.map(function (e) { return e.get_representation(); }).indexOf(line)).to.not.equal(-1);
+                // expect( representations.map(e => e.get_representation()).indexOf(line) ).to.not.equal( -1 ) }
+                if (representations_2 === null) {
+                    chai_1.expect(false);
+                }
+                else {
+                    var found = false;
+                    for (var i = 0; i < representations_2.length; i++) {
+                        var entry_1 = representations_2[i];
+                        if (entry_1["@id"] === identifier_1["@id"]) {
+                            found = true;
+                        }
+                    }
+                    chai_1.expect(found).equals(true);
+                }
             }
         }
     });
@@ -80,7 +70,6 @@ describe('Prefix Tree tests', function () {
             throw new Error("reading the tree items resulted in a null tree object.");
         }
         var rootNode = newtree.getTreeObject().get_root_node();
-        // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
         checkItems(rootNode, 0);
     });
 });
@@ -100,6 +89,10 @@ function checkItems(currentNode, depth) {
         chai_1.expect(relation.identifier).not.null;
         chai_1.expect(relation.type).not.null;
         chai_1.expect(relation.value).not.null;
+    }
+    if (totalItems != currentNode.get_remainingItems()) {
+        delete currentNode["fc"];
+        console.log("ERROR", JSON.stringify(currentNode, null, 2));
     }
     chai_1.expect(totalItems).to.equal(currentNode.get_remainingItems());
 }

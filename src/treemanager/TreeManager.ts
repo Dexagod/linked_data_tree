@@ -25,8 +25,8 @@ export abstract class TreeManager {
   readTree(sourceDirectory: string,
                 dataFolder: string,
                 nodeShaclPath: any,
-                maxCachedFragments: number,
-                maxFragmentSize: number): TreeRepresentation {
+                maxCachedFragments: number = Infinity,
+                maxFragmentSize: number = 100): TreeRepresentation {
     let nodeIO = this.getNodeIO(sourceDirectory, dataFolder, nodeShaclPath, true)
     let tree = nodeIO.readTree(this.getTreeObjectPrototype());
     return this.createTreeRepresentation(tree,

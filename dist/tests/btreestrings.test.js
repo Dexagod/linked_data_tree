@@ -1,38 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var chai_1 = require("chai");
-var BinaryBTreeManager_1 = require("../src/treemanager/BinaryBTreeManager");
-var ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
+var BTreeManager_1 = require("../src/treemanager/BTreeManager");
 var fs = require("fs");
 var ChildRelation_1 = require("../src/Relations/ChildRelation");
 var sourceDirectory = "tests/testdata/";
 var sourceFile = "tests/straatnamen20k.txt";
-var binaryTreeStringDataLocation = "binary_streets/";
-var binaryTreeStringLocation = "binary_collections/";
-var binaryTreeStringFile = "binary_streetnames";
-var maxFragmentSize = 50; // 100
+var binaryTreeStringDataLocation = "binary_streets_strings/";
+var maxFragmentSize = 100;
 var maxCachedFragments = 10000;
-// Read input file
 var k = 0;
 describe('Binary Tree String tests', function () {
     var readLines = fs.readFileSync(sourceFile).toString().split("\n");
     var representations = [];
-    var treeManager = new BinaryBTreeManager_1.BinaryBTreeManager();
+    var treeManager = new BTreeManager_1.BTreeManager();
     var tree = treeManager.createTree(sourceDirectory, binaryTreeStringDataLocation, "oslo:label", // shacl:path
     maxCachedFragments, maxFragmentSize);
     it('creating new Tree object', function () {
         chai_1.expect(tree.getTreeObject().node_count).to.equal(0);
-    });
-    var count = 0;
-    it('Adding a single item to tree', function () {
-        // let long = 10//(Math.random() * 2) + 2;
-        // let lat = 20//(Math.random() * 3) + 50;
-        // let dataObject = ttl2jsonld('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . \
-        //     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \
-        //     @prefix mu: <http://mu.semte.ch/vocabularies/core/> . \
-        //     <https://data.vlaanderen.be/id/straatnaam/' + count++ + '> a <https://data.vlaanderen.be/ns/adres#Straatnaam>  ; <http://www.w3.org/2000/01/rdf-schema#label> "Teststraat"@nl ; <long> ' + long + ' ; <lat> ' + lat + ' .')
-        // tree.addData("Teststraat", dataObject)
-        // expect(tree.getTreeObject().node_count).to.equal(1);
     });
     var identifier = 0;
     it('adding street names to tree', function () {
@@ -40,14 +25,10 @@ describe('Binary Tree String tests', function () {
             var line = readLines_1[_i];
             line = line.trim();
             // Create new Triple object to add to the given tree, containing a representation and an object.
-            var long = (Math.random() * 2) + 2;
-            var lat = (Math.random() * 3) + 50;
             var dataObject = { "@id": identifier++ };
             // Add the member to the tree.
-            var node = tree.addData(line, dataObject);
-            if (node !== null && node !== undefined) {
-                representations.push([line, dataObject]);
-            }
+            tree.addData(line, dataObject);
+            representations.push([line, dataObject]);
         }
     });
     it('writing tree object', function () {

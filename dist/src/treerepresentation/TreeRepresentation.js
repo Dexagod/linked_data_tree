@@ -19,10 +19,10 @@ var TreeRepresentation = /** @class */ (function () {
      * @param {string} representation
      * @param {any} data
      */
-    TreeRepresentation.prototype.addData = function (representation, data, dataRepresentation) {
+    TreeRepresentation.prototype.addData = function (representation, data, triplesSize, dataRepresentation) {
+        if (triplesSize === void 0) { triplesSize = 1; }
         if (dataRepresentation === void 0) { dataRepresentation = representation; }
-        var newmember = new Member_1.Member(dataRepresentation, data);
-        this.tree.addData(representation, newmember);
+        return this.tree.addData(representation, new Member_1.Member(dataRepresentation, data, triplesSize));
     };
     TreeRepresentation.prototype.searchData = function (value) {
         return this.tree.searchData(value);

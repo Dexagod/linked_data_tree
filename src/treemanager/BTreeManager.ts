@@ -1,17 +1,17 @@
 import { TreeManager } from './TreeManager';
 import { Tree } from '../Tree/Tree';
 import { TreeRepresentation } from '../treerepresentation/TreeRepresentation';
-import { BinaryBTreeRepresentation } from '../treerepresentation/BinaryBTreeRepresentation';
-import { BinaryBTree } from '../Tree/BinaryBTree';
+import { BTreeRepresentation } from '../treerepresentation/BTreeRepresentation';
+import { BTree } from '../Tree/BTree';
 import { NodeIO } from '../IO/NodeIO';
 
-export class BinaryBTreeManager extends TreeManager{
+export class BTreeManager extends TreeManager{
   
   getTreeRepresentationObjectPrototype() : any{
-    return BinaryBTreeRepresentation;
+    return BTreeRepresentation;
   }
 
   getTreeObjectPrototype() {
-    return BinaryBTree;
+    return BTree;
   }
 }

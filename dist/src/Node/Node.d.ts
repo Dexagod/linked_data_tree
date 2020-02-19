@@ -35,7 +35,7 @@ export declare class Node {
     clearChildren(): void;
     get_children_identifiers_with_relation(childRelation: ChildRelation): Array<Identifier>;
     get_children_with_relation(childRelation: ChildRelation): Array<Node> | null;
-    update_child(oldIdentifier: Identifier, newIdentifier: Identifier): void;
+    update_child(oldIdentifier: Identifier, newIdentifier: Identifier, value?: any): void;
     get_children_objects(): Array<Node>;
     get_child_by_value(value: any): Node | null;
     set_children(new_children: Array<Relation>): void;

@@ -1,39 +1,17 @@
 import { expect } from 'chai';
-// if you used the '@types/mocha' method to install mocha type definitions, uncomment the following line
-// import 'mocha';
-
 import { Node } from "../src/Node/Node"
 import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
 import { PrefixTreeManager } from '../src/treemanager/PrefixTreeManager';
-import { Identifier } from '../src/Identifier';
-const ttl2jsonld = require('@frogcat/ttl2jsonld').parse;
 import fs = require("fs")
-
-// const normalizeString = require('stringnormalizer');
 
 let sourceDirectory = "tests/testdata/"
 let sourceFile = "tests/straatnamen20k.txt"
-// let sourceFile = "tests/straatnamenSame.txt"
-let maxFragmentSize = 15
+let maxFragmentSize = 100
 let maxCachedFragments = 10000
-
-
-
 let prefixTreeStringDataLocation = "prefix_streets/"
-let prefixTreeStringLocation = "prefix_collections/"
-let prefixTreeStringFile = "prefix_streetnames" 
-
-
-
-
-// Read input file
-
-
 
 
 describe('Prefix Tree tests', () => {
-
-
   let readLines = fs.readFileSync(sourceFile).toString().split("\n")
 
   var treeManager = new PrefixTreeManager()
@@ -53,18 +31,9 @@ describe('Prefix Tree tests', () => {
   it('adding street names to tree', () => {
     for (let line of readLines) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
-      let long = (Math.random() * 2) + 2;
-      let lat = (Math.random() * 3) + 50;
-
       let dataObject = {"@id": identifier++}
-
-      // Add the member to the tree.
-      // console.log("adding data", i++)
-      let node = tree.addData(line, dataObject)
-      if (node === undefined || node === null){
-        console.error("NULL NODE", line)
-        representations.push([line, dataObject])
-      }
+      tree.addData(line, dataObject)
+      representations.push([line, dataObject])
     }
   })
 
@@ -111,8 +80,6 @@ describe('Prefix Tree tests', () => {
   it('checking total children count in each node to be the sum of the child items ', () => {
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
     let rootNode = newtree.getTreeObject().get_root_node()
-
-    // TODO:: make this recursive (reads whole tree in memory wel ! best eerst de test op de namen dat de boom weer volledig in memory zit)
     checkItems(rootNode, 0)
   
   })

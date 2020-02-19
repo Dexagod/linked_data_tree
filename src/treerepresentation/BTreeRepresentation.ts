@@ -1,13 +1,13 @@
 import { TreeRepresentation } from './TreeRepresentation';
 import { Cache } from '../Cache/Cache';
 import { Tree } from '../Tree/Tree';
-import { BinaryBTree } from '../Tree/BinaryBTree';
+import { BTree } from '../Tree/BTree';
 import { Member } from '../DataObjects/Member';
 import { Node } from '../Node/Node';
 
-export class BinaryBTreeRepresentation extends TreeRepresentation{
+export class BTreeRepresentation extends TreeRepresentation{
   createNewTreeObject(maxFragmentSize : number, fc : Cache) : Tree{
-    return new BinaryBTree(maxFragmentSize, fc);
+    return new BTree(maxFragmentSize, fc);
   }
 
 }
