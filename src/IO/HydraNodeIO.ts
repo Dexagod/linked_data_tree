@@ -9,107 +9,9 @@ import { NodeIO } from './NodeIO';
 
 import fs = require('fs');
 
-var context = {
-  "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-  "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
-  "foaf": "http://xmlns.com/foaf/0.1/",
-  "hydra": "http://www.w3.org/ns/hydra/core#",
-  "tree": "https://w3id.org/tree#",
-  "schema": "http://schema.org//",
-  "value": "tree:value",
-  "members": "hydra:member",
-  "children": "tree:relation",
-  "geo" : "http://www.w3.org/2003/01/geo/wgs84_pos#",
-  "shacl" : "http://www.w3.org/ns/shacl#"
-}
-
 export class HydraNodeIO extends NodeIO{
 
-  /**
-   * Initialize the fragment IO managing object.
-   * @param {string} sourceDirectory - The source directory where all data of this tree is stored.
-   * @param {string} dataFolder - The subfolder of the source directory where the fragments are stored.
-   */
-
-
-
-  write_node_batch(nodeArray: Array<Node>) {
-    for (var index = 0; index < nodeArray.length; index++){
-      this.write_node(nodeArray[index])
-    }
-  }
-
-  delete_node(nodeId: string){
-    if (nodeId === null || nodeId === undefined) {  return};
-    let location = this.getNodeLocation(nodeId)
-    if (fs.existsSync(location)){
-      fs.unlinkSync(location)
-    }
-  }
   
-  write_node(node: Node) {
-    let location = this.getNodeLocation(node.get_node_id())
-    let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
-    let wrapper = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
-    let JSONSTRING = JSON.stringify(wrapper, function(key, value) {
-        return (key == 'fc') ? undefined : value;
-    });
-    fs.writeFileSync(location, JSONSTRING, {encoding: 'utf-8'})    
-  }
-
-  read_node(nodeId: string, fc: Cache) {
-    let location = this.getNodeLocation(nodeId)
-    let input_string = fs.readFileSync(location, {encoding: 'utf-8'})
-    let wrapper = JSON.parse(input_string);
-    let [node, members, membersMetadata, totalItems] = this.decode_wrapper(wrapper);
-    node = this.decode_node(node, members, membersMetadata, fc);
-    return node
-  }
-
-  writeTreeRoot(node : Node, tree: Tree){
-    let location = this.getNodeLocation(node.get_node_id())
-    let [encodedNode, encodedMembers, encodedMemberMetadata] = this.encode_node(node)
-    let wrapper : any = this.encode_wrapper(encodedNode, encodedMembers, encodedMemberMetadata, node.get_remainingItems()) // TODO:: fix for correct amount of total items?
-    let treeMetadata = [tree.max_fragment_size, tree.node_count, tree.options]  
-    wrapper["treeMetadata"] = treeMetadata
-    let JSONSTRING = JSON.stringify(wrapper, function(key, value) {
-        return (key == 'fc') ? undefined : value;
-    });
-    fs.writeFileSync(location, JSONSTRING, {encoding: 'utf-8'})  
-    let returnwrapper = Object.assign(wrapper)
-    delete returnwrapper["treeMetadata"]
-    delete returnwrapper["memberMetadata"]
-    delete returnwrapper["hydra:member"]
-    return wrapper
-  }
-
-  readTree(prototypeObject : any) {
-    let nodeId = this.dataFolder + "node0.jsonld";
-    let location = this.getNodeLocation(nodeId)
-    let input_string = fs.readFileSync(location, {encoding: 'utf-8'})
-    let wrapper = JSON.parse(input_string);
-    let treeMetadata = wrapper["treeMetadata"]
-    let [max_fragment_size, node_count, options] = treeMetadata
-
-    let tree : any = {}
-    tree["cache"] = new Cache(this.sourceDirectory, this.dataFolder, max_fragment_size, this)
-    tree["root_node_identifier"] = this.retrieveNodeIdentifier(wrapper["hydra:view"]["@id"], null)
-    tree["max_fragment_size"] = max_fragment_size
-    tree["node_count"] = node_count
-    tree["options"] = options
-    tree["options"] = options
-    Object.setPrototypeOf(tree, prototypeObject.prototype)
-
-    return tree
-  }
-  
-  decode_wrapper(wrapper : any){
-    let node = wrapper["hydra:view"]
-    let members = wrapper["hydra:member"]
-    let membersMetadata =  wrapper["memberMetadata"]
-    let totalItems =  wrapper["tree:remainingItems"]
-    return [node, members, membersMetadata, totalItems]
-  }
 
   encode_node(node: Node) : any {   
 
@@ -161,8 +63,8 @@ export class HydraNodeIO extends NodeIO{
 
   decode_node(node: any, members : any, membersMetadata : any, fc:Cache){
     Object.setPrototypeOf(node, Node.prototype)
-    node["value"] = this.decode_node_value(node["metadataValue"])
-    node["identifier"] = this.retrieveNodeIdentifier(node["@id"], node["value"]) // node["@id"].replace(this.dataFolder + "fragment", "").replace(".jsonld", "").split("#")
+    node["identifier"] = this.retrieveNodeIdentifier(node["@id"], null) 
+    node["@id"].replace(this.dataFolder + "fragment", "").replace(".jsonld", "").split("#")
 
     delete node["@id"];
     delete node["@type"];

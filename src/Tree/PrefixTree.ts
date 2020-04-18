@@ -153,12 +153,6 @@ export class PrefixTree extends Tree {
         resultingMembers = resultingMembers.concat(resMems)
         resultingNodes = resultingNodes.concat(resNodes)
 
-      } else if (childIdentifier.value.startsWith(searchString)){
-
-        let child = this.get_cache().get_node(childIdentifier)
-        let [resMems, resNodes] = this._search_data_recursive(child, "")
-        resultingMembers = resultingMembers.concat(resMems)
-        resultingNodes = resultingNodes.concat(resNodes)
       }
     }
 

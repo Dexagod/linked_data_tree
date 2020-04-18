@@ -3,10 +3,13 @@ import { Node } from "../src/Node/Node"
 import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
 import { BTreeManager } from '../src/treemanager/BTreeManager';
 
-let sourceDirectory = "tests/testdata/"
-let binaryTreeStringDataLocation = "binary_streets/"
-let maxFragmentSize = 5
-let maxCachedFragments = 10000
+let config = {
+  rootDir : 'tests/testdata/',
+  dataDir : 'binary_streets/',
+  treePath: 'oslo:label',
+  fragmentSize: 100
+}
+let location = config['rootDir'] + config['dataDir']
 
 describe('Binary Tree numbers tests', () => {
   let readLines : Array<number> = []
@@ -17,11 +20,7 @@ describe('Binary Tree numbers tests', () => {
     readLines.push(1+Math.ceil(Math.random() * 10000))
   }
 
-  let tree = treeManager.createTree(sourceDirectory, 
-    binaryTreeStringDataLocation, 
-    "oslo:label",  // shacl:path
-    maxCachedFragments, 
-    maxFragmentSize)
+  let tree = treeManager.createTree(config)
 
   it('creating new Tree object', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
@@ -43,11 +42,7 @@ describe('Binary Tree numbers tests', () => {
 
   let newtree : TreeRepresentation | null = null;
   it('checking all items to be in the tree', () => {
-    newtree = treeManager.readTree(sourceDirectory, 
-      binaryTreeStringDataLocation, 
-      "oslo:label",  // shacl:path
-      maxCachedFragments, 
-      maxFragmentSize);
+    newtree = treeManager.readTree(location);
 
       for (let entry of representations) {
         let identifier = entry[1]

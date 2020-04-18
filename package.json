@@ -1,10 +1,10 @@
 {
   "name": "linkeddatatree",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Creation of tree structured fragmentations of RDF data",
   "main": "dist/src/index.js",
   "scripts": {
-    "test": "mocha -r ts-node/register tests/**/*.test.ts --timeout 1000000",
+    "test": "nyc mocha -r ts-node/register tests/**/*.test.ts --timeout 1000000",
     "build": "tsc"
   },
   "author": "Ruben Dedecker",
@@ -16,7 +16,8 @@
     "chai": "^4.2.0",
     "mocha": "^6.2.1",
     "typescript": "^3.6.3",
-    "ts-node": "^8.6.2"
+    "ts-node": "^8.6.2",
+    "nyc": "^15.0.1"
   },
   "dependencies": {
     "fs": "0.0.1-security",

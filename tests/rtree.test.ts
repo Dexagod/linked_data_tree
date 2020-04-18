@@ -4,22 +4,21 @@ import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation
 import { RTreeManager } from '../src/treemanager/RTreeManager';
 import fs = require("fs")
 
-let sourceDirectory = "tests/testdata/"
 let sourceFile = "tests/straatnamen20k.txt"
-let maxFragmentSize = 100
-let maxCachedFragments = 10000
-let RTreeStringDataLocation = "rtree_streets/"
+let config = {
+  rootDir : 'tests/testdata/',
+  dataDir : 'rtree_streets/',
+  treePath: 'oslo:label',
+  fragmentSize: 100
+}
+let location = config['rootDir'] + config['dataDir']
 
 
 describe('RTree tests', () => {
 
   let representations : any[] = []
   var treeManager = new RTreeManager()
-  let tree = treeManager.createTree(sourceDirectory, 
-                                    RTreeStringDataLocation, 
-                                    "oslo:label",  // shacl:path
-                                    maxCachedFragments, 
-                                    maxFragmentSize)
+  let tree = treeManager.createTree(config)
 
   it('creating new Tree object', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
@@ -54,11 +53,7 @@ describe('RTree tests', () => {
   let newtree : TreeRepresentation | null = null;
   it('checking all items to be in the tree', () => {
   
-    newtree = treeManager.readTree(sourceDirectory, 
-      RTreeStringDataLocation, 
-      "oslo:label",  // shacl:path
-      maxCachedFragments, 
-      maxFragmentSize)
+    newtree = treeManager.readTree(location)
 
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}
     for (let entry of representations) {

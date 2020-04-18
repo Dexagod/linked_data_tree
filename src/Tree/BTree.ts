@@ -257,7 +257,6 @@ export class BTree extends Tree {
     if (splitMember === undefined ) { throw new Error("could not define split position")}
 
     if (splitMember.get_representation() !== splitValueSmall){ 
-      // console.log(memberList.map(e=>e.representation), "\n", splitMember.get_representation(), splitValueSmall, "\n", smallChildrenNodeEntries.map(e=>[e[1].start, e[1].end]), largeChildrenNodeEntries.map(e=>[e[1].start, e[1].end]));
       throw new Error("Split member does not equal split value")
     }
 

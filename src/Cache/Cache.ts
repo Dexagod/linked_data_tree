@@ -157,20 +157,9 @@ export class Cache {
     }
 
     flush_cache(tree : Tree) {
-
-        let rootNodeIdentifier = tree.get_root_node_identifier()
         let keyArray = Array.from(this.cache.keys())
-        if (rootNodeIdentifier != null){
-            keyArray.splice(keyArray.indexOf(rootNodeIdentifier.nodeId), 1) // remove rootNode from keys
-        }
-        let rootNode = tree.get_root_node()
         this.write_node_batch_to_file(keyArray)
-        if (rootNodeIdentifier != null){
-            this.cache.delete(rootNodeIdentifier.nodeId)  
-        }
-
-        if (rootNode === undefined) { throw new Error("Cannot write rootnode to file since rootnode is undefined.")}
-        return this.nodeIO.writeTreeRoot(rootNode, tree)
+        this.nodeIO.writeTreeMetadata(tree)
     }
 
     getNodeFromCache(nodeId: string): Node{

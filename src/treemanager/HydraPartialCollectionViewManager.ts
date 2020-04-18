@@ -27,7 +27,7 @@ export class HydraPartialCollectionViewManager extends TreeManager{
     return HydraPartialCollectionView;
   }
 
-  getNodeIOObject(sourceDirectory: string, dataFolder: string, nodePath : any, writeMetadata : boolean): NodeIO {
-    return new HydraNodeIO(sourceDirectory, dataFolder, nodePath, writeMetadata)
+  getNodeIOObjectPrototype(): any {
+    return HydraNodeIO;
   }
 }

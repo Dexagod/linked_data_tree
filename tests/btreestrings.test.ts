@@ -5,13 +5,16 @@ import { BTreeManager } from '../src/treemanager/BTreeManager';
 import fs = require("fs")
 import { Relation } from '../src/Relation';
 import { ChildRelation } from '../src/Relations/ChildRelation';
-let sourceDirectory = "tests/testdata/"
 let sourceFile = "tests/straatnamen20k.txt"
-let binaryTreeStringDataLocation = "binary_streets_strings/"
-let maxFragmentSize = 100
-let maxCachedFragments = 10000
 
-
+let config = {
+  rootDir : 'tests/testdata/',
+  dataDir : 'binary_streets_strings/',
+  treePath: 'oslo:label',
+  fragmentSize: 100,
+  context: {'test1': 'http://test1.org#', 'test2': 'http://test2.org#', 'rdf': 'http://myRDF.org#'}
+}
+let location = config['rootDir'] + config['dataDir']
 
 let k = 0;
 
@@ -23,11 +26,7 @@ describe('Binary Tree String tests', () => {
   var treeManager = new BTreeManager()
   
   
-  let tree = treeManager.createTree(sourceDirectory, 
-    binaryTreeStringDataLocation, 
-    "oslo:label",  // shacl:path
-    maxCachedFragments, 
-    maxFragmentSize)
+  let tree = treeManager.createTree(config)
 
   it('creating new Tree object', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
@@ -56,11 +55,7 @@ describe('Binary Tree String tests', () => {
   let newtree : TreeRepresentation | null = null;
   it('checking all items to be in the tree', () => {
   
-    newtree = treeManager.readTree(sourceDirectory, 
-      binaryTreeStringDataLocation, 
-      "oslo:label",  // shacl:path
-      maxCachedFragments, 
-      maxFragmentSize);
+    newtree = treeManager.readTree(location);
 
       for (let entry of representations) {
         let identifier = entry[1]
@@ -119,11 +114,6 @@ function checkItems(currentNode : Node, depth: number){
     expect(relation.type).not.null
     expect(relation.value).not.null
   }
-  
-  // if (totalItems !== currentNode.get_remainingItems()){
-  //   console.log(currentNode.get_children_objects().map( (e:Node) => { return [e.identifier.nodeId, e.remainingItems] }))
-  // }
-  // console.log(currentNode.get_remainingItems())
   expect(totalItems).to.equal(currentNode.get_remainingItems());
 }
 

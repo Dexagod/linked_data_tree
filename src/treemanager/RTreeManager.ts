@@ -24,7 +24,7 @@ export class RTreeManager extends TreeManager{
     return RTree;
   }
 
-  getNodeIOObject(sourceDirectory : string, dataFolder : string, nodePath : any){
-    return new WKTNodeIO(sourceDirectory, dataFolder, nodePath)
+  getNodeIOObjectPrototype(): any{
+    return WKTNodeIO;
   }
 }

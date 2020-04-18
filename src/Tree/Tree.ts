@@ -26,9 +26,7 @@ export abstract class Tree {
 
         this.root_node_identifier = null;
         
-        this.options = {
-          locale: "be"
-        }
+
         //TODO:      When comparing large numbers of strings, such as in sorting large arrays, it is better to create an Intl.Collator object and use the function provided by its compare property.
     }
 

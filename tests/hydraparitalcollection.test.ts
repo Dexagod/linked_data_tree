@@ -2,14 +2,15 @@ import { expect } from 'chai';
 import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation";
 import { HydraPartialCollectionViewManager } from '../src/treemanager/HydraPartialCollectionViewManager';
 import fs = require("fs")
-let sourceDirectory = "tests/testdata/"
+
 let sourceFile = "tests/straatnamen20k.txt"
-let maxFragmentSize = 500
-let maxCachedFragments = 10000
-
-
-
-let treeStringDataLocation = "hydra_streets/"
+let config = {
+  rootDir : 'tests/testdata/',
+  dataDir : 'hydra_streets/',
+  treePath: 'oslo:label',
+  fragmentSize: 500
+}
+let location = config['rootDir'] + config['dataDir']
 
 
 
@@ -26,11 +27,7 @@ describe('Hydra tests', () => {
   let representations : any[] = []
 
   var treeManager = new HydraPartialCollectionViewManager()
-  let tree = treeManager.createTree(sourceDirectory, 
-    treeStringDataLocation, 
-    "oslo:label",  // shacl:path
-    maxCachedFragments, 
-    maxFragmentSize)
+  let tree = treeManager.createTree(config)
 
   it('creating new Tree object', () => {
     expect(tree.getTreeObject().node_count).to.equal(0);
@@ -63,11 +60,7 @@ describe('Hydra tests', () => {
   let newtree : TreeRepresentation | null = null;
   it('checking all items to be in the tree', () => {
   
-    newtree = treeManager.readTree(sourceDirectory, 
-      treeStringDataLocation, 
-      "oslo:label",  // shacl:path
-      maxCachedFragments, 
-      maxFragmentSize)
+    newtree = treeManager.readTree(location)
 
       for (let entry of representations) {
         let identifier = entry[1]
