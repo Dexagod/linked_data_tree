@@ -13,10 +13,11 @@ let config = {
 }
 let location = config['rootDir'] + config['dataDir']
 
+let lines = fs.readFileSync(sourceFile).toString().split("\n")
+
 
 
 describe('Prefix Tree tests', () => {
-  let readLines = fs.readFileSync(sourceFile).toString().split("\n")
 
   var treeManager = new PrefixTreeManager()
   let tree = treeManager.createTree(config)
@@ -29,7 +30,7 @@ describe('Prefix Tree tests', () => {
   let identifier = 0
   let representations = new Array();
   it('adding street names to tree', () => {
-    for (let line of readLines) {
+    for (let line of lines.slice(0, 10000)) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
       let dataObject = {"@id": identifier++}
       tree.addData(line, dataObject)
@@ -44,6 +45,15 @@ describe('Prefix Tree tests', () => {
   let newtree : TreeRepresentation | null = null;
   it('checking all items to be in the tree', () => {
   
+    tree = treeManager.readTree(location)
+    for (let line of lines.slice(10000)) {
+      // Create new Triple object to add to the given tree, containing a representation and an object.
+      let dataObject = {"@id": identifier++}
+      tree.addData(line, dataObject)
+      representations.push([line, dataObject])
+    }
+    tree.doneAdding();
+    
     newtree = treeManager.readTree(location)
 
     if ( newtree === null ) { throw new Error("reading the tree items resulted in a null tree object." )}

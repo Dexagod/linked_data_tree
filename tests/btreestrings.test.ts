@@ -5,13 +5,13 @@ import { BTreeManager } from '../src/treemanager/BTreeManager';
 import fs = require("fs")
 import { Relation } from '../src/Relation';
 import { ChildRelation } from '../src/Relations/ChildRelation';
-let sourceFile = "tests/straatnamen20k.txt"
+let sourceFile = "tests/straatnamen_duplicates.txt"
 
 let config = {
   rootDir : 'tests/testdata/',
   dataDir : 'binary_streets_strings/',
   treePath: 'oslo:label',
-  fragmentSize: 100,
+  fragmentSize: 25,
   context: {'test1': 'http://test1.org#', 'test2': 'http://test2.org#', 'rdf': 'http://myRDF.org#'}
 }
 let location = config['rootDir'] + config['dataDir']
@@ -67,6 +67,7 @@ describe('Binary Tree String tests', () => {
           for (let i = 0; i < foundreps.length; i++){
             let entry : any = foundreps[i]
             if (entry["contents"]["@id"] === identifier["@id"]) {
+              console.log("matched", identifier["@id"])
               found = true;
             }
           }
