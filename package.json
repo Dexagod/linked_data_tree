@@ -4,7 +4,7 @@
   "description": "Creation of tree structured fragmentations of RDF data",
   "main": "dist/src/index.js",
   "scripts": {
-    "test": "nyc mocha -r ts-node/register tests/**/*.test.ts --timeout 1000000",
+    "test": "mocha -r ts-node/register tests/**/*ngramtree.test.ts --timeout 1000000",
     "build": "tsc"
   },
   "author": "Ruben Dedecker",
