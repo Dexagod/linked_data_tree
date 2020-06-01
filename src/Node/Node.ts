@@ -15,6 +15,8 @@ export class Node {
     fc: Cache;
     remainingItems: number;
 
+    children_remaining_items: Map<string, number>;
+
 
     constructor(value: any, parent_node: Node | null, tree: Tree) {
         this.identifier = new Identifier(tree.provide_node_id(), value);
@@ -28,6 +30,7 @@ export class Node {
             this.parent_node = null;
         }
         this.remainingItems = 0;
+        this.children_remaining_items = new Map();
         tree.addNode(this)
     }
 
@@ -72,6 +75,7 @@ export class Node {
     
     add_child_no_propagation_with_relation(relation: Relation, childNode : Node) {
         this.children.push(relation);
+        this.children_remaining_items.set(childNode.get_node_id(), childNode.get_remainingItems() || 0)
         childNode.set_parent_node(this);
     }
     
@@ -110,10 +114,16 @@ export class Node {
       return this.children.length > 0;
     }
 
-    propagate_children_count(increment: number) {
+    propagate_children_count(increment: number, identifier?: Identifier, remainingItems?: number) {
       this.remainingItems += increment;
+      if(identifier){
+          let relations = this.getRelationsForChild(identifier)
+          for (let relation of relations){
+              relation.remainingItems = remainingItems || relation.remainingItems;
+          }
+      }
       if (this.has_parent_node()) {
-        this.get_parent_node().propagate_children_count(increment)
+        this.get_parent_node().propagate_children_count(increment, this.identifier, this.remainingItems)
       }
     }
 
@@ -140,6 +150,7 @@ export class Node {
         }
       }
       this.children = newRelations;
+      this.children_remaining_items.delete(node.get_node_id())
     }
 
     swapChildren(oldChild : Node, relations : Array<ChildRelation>, newChildren : Array<Node>, values : Array<any>){ 
@@ -313,6 +324,7 @@ export class Node {
         this.set_children(othernode.get_children())
         this.set_members(othernode.get_members())
         this.set_remainingItems(othernode.get_remainingItems())
+        this.children_remaining_items = othernode.children_remaining_items;
     }
 
     get_only_child_with_relation(childRelation : ChildRelation) : Node | null {

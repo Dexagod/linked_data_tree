@@ -220,13 +220,12 @@ export class NodeIO{
       relation.path = this.shaclPath;
     }
   
-    if (relation.identifier.nodeId === "/rtree_streets/1/node76.jsonld"){
-    }
     return  {
       "@type" : this.relationToString(relation.type),
       "tree:node" : { "@id": this.getNodeIdFromIdentifier(relation.identifier.nodeId) },
       "tree:path" : relation.path,
       "tree:value" : this.encode_node_value(relation.value),
+      "tree:remainingItems": relation.remainingItems,
     }
   }
 
@@ -236,7 +235,8 @@ export class NodeIO{
     let relationIdentifier = this.retrieveNodeIdentifier(childRelationObject["tree:node"]["@id"], this.decode_node_value(childRelationObject["tree:value"]))
     let relationValue = this.decode_node_value(childRelationObject["tree:value"])
     let shaclPath = childRelationObject["tree:path"]
-    return new Relation(relationType, relationValue, relationIdentifier, shaclPath)
+    let remainingItems = childRelationObject["tree:remainingItems"]
+    return new Relation(relationType, relationValue, relationIdentifier, shaclPath, remainingItems)
   }
 
   getCollectionId(){

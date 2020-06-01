@@ -1,3 +1,4 @@
+export { NGramTreeManager } from './treemanager/NGramTreeManager';
 export { PrefixTreeManager } from './treemanager/PrefixTreeManager';
 export { BTreeManager } from './treemanager/BTreeManager';
 export { RTreeManager } from './treemanager/RTreeManager';

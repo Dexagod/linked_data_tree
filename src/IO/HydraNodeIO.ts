@@ -79,7 +79,7 @@ export class HydraNodeIO extends NodeIO{
     
     node["children"] = new Array()
     if (node.hasOwnProperty("hydra:next")){
-      let relation = new Relation(ChildRelation.EqualThanRelation, null, this.retrieveNodeIdentifier(node["hydra:next"], null), null)
+      let relation = new Relation(ChildRelation.EqualThanRelation, null, this.retrieveNodeIdentifier(node["hydra:next"], null))
       node["children"].push(relation)
     }
     
