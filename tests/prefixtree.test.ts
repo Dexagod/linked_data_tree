@@ -4,7 +4,7 @@ import { TreeRepresentation } from "../src/treerepresentation/TreeRepresentation
 import { PrefixTreeManager } from '../src/treemanager/PrefixTreeManager';
 import fs = require("fs")
 
-let sourceFile = "tests/straatnamen20k.txt"
+let sourceFile = "tests/straatnamen.txt"
 let config = {
   rootDir : 'tests/testdata/',
   dataDir : 'prefix_streets/',
@@ -30,7 +30,7 @@ describe('Prefix Tree tests', () => {
   let identifier = 0
   let representations = new Array();
   it('adding street names to tree', () => {
-    for (let line of lines.slice(0, 10000)) {
+    for (let line of lines) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
       let dataObject = {"@id": identifier++}
       tree.addData(line, dataObject)
@@ -46,7 +46,7 @@ describe('Prefix Tree tests', () => {
   it('checking all items to be in the tree', () => {
   
     tree = treeManager.readTree(location)
-    for (let line of lines.slice(10000)) {
+    for (let line of lines) {
       // Create new Triple object to add to the given tree, containing a representation and an object.
       let dataObject = {"@id": identifier++}
       tree.addData(line, dataObject)

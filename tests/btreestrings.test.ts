@@ -67,7 +67,6 @@ describe('Binary Tree String tests', () => {
           for (let i = 0; i < foundreps.length; i++){
             let entry : any = foundreps[i]
             if (entry["contents"]["@id"] === identifier["@id"]) {
-              console.log("matched", identifier["@id"])
               found = true;
             }
           }

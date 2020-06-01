@@ -1,0 +1,10 @@
+{
+  "rootDir": "tests/testdata/",
+  "dataDir": "ngrams/",
+  "treePath": "oslo:label",
+  "fragmentSize": 25,
+  "memoryLimit": 100000000000,
+  "writeMetadata": true,
+  "context": {},
+  "nodeCount": 1729
+}
